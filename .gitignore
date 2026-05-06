@@ -1,0 +1,71 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# PyInstaller
+*.spec
+backend/dist/
+backend/build/
+
+# ── Banco de dados ────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Imagens de pacientes (dados sensíveis — nunca versionar) ──────────────────
+backend/imagens_salvas/
+imagens_salvas/
+
+# ── Modelos de IA (arquivos grandes — usar Git LFS ou armazenar separado) ─────
+*.pt
+*.pth
+*.onnx
+*.bin
+*.safetensors
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/build/
+.pnp
+.pnp.js
+
+# ── Tauri ─────────────────────────────────────────────────────────────────────
+frontend/src-tauri/target/
+frontend/src-tauri/WixTools/
+*.msi
+*.deb
+*.dmg
+*.AppImage
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+uvicorn.log
+
+# ── Variáveis de ambiente ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

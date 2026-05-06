@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body, #root {
+    height: 100%;
+    background-color: #0a0d14;
+    color: #e2e8f0;
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0f1320;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1a2135;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface-2 border border-surface-4 rounded-xl;
+  }
+
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-dim text-white font-medium px-5 py-2.5 rounded-lg
+           transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed
+           disabled:active:scale-100;
+  }
+
+  .btn-ghost {
+    @apply border border-surface-4 hover:border-accent/50 hover:bg-accent/10 text-slate-300
+           hover:text-white font-medium px-5 py-2.5 rounded-lg transition-all duration-200
+           active:scale-95;
+  }
+
+  .input-field {
+    @apply bg-surface-3 border border-surface-4 focus:border-accent/60 text-slate-100
+           placeholder-slate-500 rounded-lg px-4 py-2.5 w-full outline-none
+           transition-colors duration-200 text-sm;
+  }
+
+  .label {
+    @apply text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5 block;
+  }
+
+  .badge-processing {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+           bg-amber-500/15 text-amber-400 border border-amber-500/25;
+  }
+
+  .badge-done {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+           bg-emerald-500/15 text-emerald-400 border border-emerald-500/25;
+  }
+
+  .badge-error {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+           bg-red-500/15 text-red-400 border border-red-500/25;
+  }
+
+  .shimmer-line {
+    @apply rounded h-4 bg-gradient-to-r from-surface-3 via-surface-4 to-surface-3;
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
