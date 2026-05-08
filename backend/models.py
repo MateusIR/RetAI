@@ -4,10 +4,22 @@ import datetime
 
 Base = declarative_base()
 
+class Medico(Base):
+    __tablename__ = "medicos"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, index=True)
+    cpf = Column(String, unique=True, index=True)
+    crm = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    senha_hash = Column(String)
+    
+    diagnosticos = relationship("Diagnostico", back_populates="medico")
+
 class Paciente(Base):
     __tablename__ = "pacientes"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
+    cpf = Column(String, index=True, nullable=True) # CPF opcional 
     idade = Column(Integer)
     sexo = Column(String)
     diagnosticos = relationship("Diagnostico", back_populates="paciente")
@@ -16,12 +28,15 @@ class Diagnostico(Base):
     __tablename__ = "diagnosticos"
     id = Column(Integer, primary_key=True, index=True)
     paciente_id = Column(Integer, ForeignKey("pacientes.id"))
-    status = Column(String, default="PROCESSANDO")  # PROCESSANDO, CONCLUIDO, ERRO
+    medico_id = Column(Integer, ForeignKey("medicos.id"), nullable=True) # Vínculo com médico 
+    
+    status = Column(String, default="PROCESSANDO")
     data_criacao = Column(DateTime, default=datetime.datetime.utcnow)
     data_finalizacao = Column(DateTime, nullable=True)
-    modelo_versao = Column(String, default="mock-v0.1")  # Auditoria
+    modelo_versao = Column(String, default="mock-v0.1")
 
     paciente = relationship("Paciente", back_populates="diagnosticos")
+    medico = relationship("Medico", back_populates="diagnosticos")
     imagens = relationship("Imagem", back_populates="diagnostico")
     resultados = relationship("Resultado", back_populates="diagnostico")
 
@@ -29,7 +44,7 @@ class Imagem(Base):
     __tablename__ = "imagens"
     id = Column(Integer, primary_key=True, index=True)
     diagnostico_id = Column(Integer, ForeignKey("diagnosticos.id"))
-    tipo = Column(String)  # OD, OE
+    tipo = Column(String)
     caminho_arquivo = Column(String)
     diagnostico = relationship("Diagnostico", back_populates="imagens")
 

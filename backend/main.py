@@ -10,11 +10,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from models import Base, Paciente, Diagnostico, Imagem, Resultado
+from pydantic import BaseModel
+from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from typing import List
+
+from models import Base, Medico, Paciente, Diagnostico, Imagem, Resultado
 from ml_engine import analisar_imagem, MODEL_VERSION
 
 # ── App ──────────────────────────────────────────────────────────────────────
-app = FastAPI(title="Diagnóstico Ocular API", version="0.1.0")
+app = FastAPI(title="RetAI API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,17 +104,53 @@ def health():
     return {"status": "ok", "modelo_versao": MODEL_VERSION}
 
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
+def get_medico_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # Em um app real, use decodificação JWT aqui. 
+    # Para o MVP simplificado, assumiremos que o token é o email.
+    medico = db.query(Medico).filter(Medico.email == token).first()
+    if not medico:
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    return medico
+
+class MedicoCreate(BaseModel):
+    nome: str
+    cpf: str
+    crm: str
+    email: str
+    senha: str
+
+@app.post("/api/medicos/registrar")
+def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
+    senha_hasheada = pwd_context.hash(medico.senha)
+    novo_medico = Medico(nome=medico.nome, cpf=medico.cpf, crm=medico.crm, email=medico.email, senha_hash=senha_hasheada)
+    db.add(novo_medico)
+    db.commit()
+    return {"message": "Médico registrado com sucesso"}
+
+@app.post("/api/auth/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    medico = db.query(Medico).filter(Medico.email == form_data.username).first()
+    if not medico or not pwd_context.verify(form_data.password, medico.senha_hash):
+        raise HTTPException(status_code=400, detail="Email ou senha incorretos")
+    # Retorna o email como token para simplificar no MVP (idealmente gere um JWT)
+    return {"access_token": medico.email, "token_type": "bearer"}
+
 @app.post("/api/diagnosticos/")
 async def criar_diagnostico(
     background_tasks: BackgroundTasks,
     nome: str = Form(...),
     idade: int = Form(...),
     sexo: str = Form(...),
+    cpf: Optional[str] = Form(None),
     tipo_od: bool = Form(False),
     tipo_oe: bool = Form(False),
     file_od: Optional[UploadFile] = File(None),
     file_oe: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual) # Exige login
 ):
     if not tipo_od and not tipo_oe:
         raise HTTPException(status_code=400, detail="Selecione ao menos um olho para análise.")
@@ -120,14 +161,14 @@ async def criar_diagnostico(
         raise HTTPException(status_code=400, detail="Arquivo OE não enviado.")
 
     # 1. Cria paciente
-    paciente = Paciente(nome=nome.strip(), idade=idade, sexo=sexo)
+    paciente = Paciente(nome=nome.strip(), cpf=cpf, idade=idade, sexo=sexo)
     db.add(paciente)
     db.commit()
     db.refresh(paciente)
 
-    # 2. Cria diagnóstico
     diagnostico = Diagnostico(
         paciente_id=paciente.id,
+        medico_id=medico_atual.id,
         status="PROCESSANDO",
         modelo_versao=MODEL_VERSION,
     )
@@ -168,17 +209,25 @@ async def criar_diagnostico(
 def listar_diagnosticos(
     nome_filtro: Optional[str] = None,
     doenca_filtro: Optional[str] = None,
+    cpf_filtro: Optional[str] = None, # Feature 2
+    page: int = 1, # Feature 8
     db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual)
 ):
-    query = db.query(Diagnostico).join(Paciente)
+    query = db.query(Diagnostico).join(Paciente).filter(Diagnostico.medico_id == medico_atual.id)
 
     if nome_filtro:
         query = query.filter(Paciente.nome.ilike(f"%{nome_filtro}%"))
-
+    if cpf_filtro:
+        query = query.filter(Paciente.cpf.ilike(f"%{cpf_filtro}%"))
     if doenca_filtro:
         query = query.join(Resultado).filter(Resultado.doenca.ilike(f"%{doenca_filtro}%"))
 
-    diagnosticos = query.order_by(Diagnostico.data_criacao.desc()).all()
+    # Paginação: Limite de 30 por página (Feature 8)
+    limit = 30
+    offset = (page - 1) * limit
+    total = query.count()
+    diagnosticos = query.order_by(Diagnostico.data_criacao.desc()).offset(offset).limit(limit).all()
 
     resultado_lista = []
     for diag in diagnosticos:
@@ -205,7 +254,7 @@ def listar_diagnosticos(
             "modelo_versao": diag.modelo_versao,
         })
 
-    return resultado_lista
+    return {"total": total, "pagina_atual": page, "dados": resultado_lista}
 
 
 @app.get("/api/diagnosticos/{diagnostico_id}")
@@ -235,3 +284,22 @@ def detalhe_diagnostico(diagnostico_id: int, db: Session = Depends(get_db)):
         "resultados": resultados,
         "modelo_versao": diag.modelo_versao,
     }
+
+class DeleteModel(BaseModel):
+    ids: List[int]
+
+@app.delete("/api/diagnosticos/")
+def excluir_diagnosticos(req: DeleteModel, db: Session = Depends(get_db), medico_atual: Medico = Depends(get_medico_atual)):
+    diagnosticos = db.query(Diagnostico).filter(
+        Diagnostico.id.in_(req.ids), 
+        Diagnostico.medico_id == medico_atual.id
+    ).all()
+    
+    for diag in diagnosticos:
+        for img in diag.imagens:
+            if os.path.exists(img.caminho_arquivo):
+                os.remove(img.caminho_arquivo)
+        db.delete(diag)
+    
+    db.commit()
+    return {"excluidos": len(diagnosticos)}
