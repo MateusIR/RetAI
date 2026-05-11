@@ -28,6 +28,10 @@ const INITIAL: FormState = {
   fileOe: null,
 }
 
+function RequiredMark() {
+  return <span className="text-blue-400 ml-0.5">*</span>
+}
+
 function FileDropZone({ label, file, onChange }: { label: string; file: File | null; onChange: (f: File | null) => void }) {
   const ref = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -90,7 +94,7 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
     try {
       const res = await criarDiagnostico({
         nome: form.nome.trim(),
-        cpf: form.cpf.trim() || undefined, // Envia undefined se estiver vazio
+        cpf: form.cpf.trim() || undefined,
         idade: Number(form.idade),
         sexo: form.sexo,
         tipo_od: form.od,
@@ -138,21 +142,21 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="label">Nome completo</label>
+                <label className="label">Nome completo<RequiredMark /></label>
                 <input className="input-field" placeholder="Ex: Maria Silva" value={form.nome} onChange={e => setField('nome', e.target.value)} />
               </div>
               <div>
-                <label className="label">CPF / ID (Opcional)</label>
+                <label className="label">CPF / ID</label>
                 <input className="input-field font-mono text-sm" placeholder="000.000.000-00" maxLength={14} value={form.cpf} onChange={e => setField('cpf', formatCpf(e.target.value))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Idade</label>
+                <label className="label">Idade<RequiredMark /></label>
                 <input className="input-field" type="number" min={1} max={130} placeholder="Ex: 45" value={form.idade} onChange={e => setField('idade', e.target.value)} />
               </div>
               <div>
-                <label className="label">Sexo</label>
+                <label className="label">Sexo<RequiredMark /></label>
                 <select className="input-field" value={form.sexo} onChange={e => setField('sexo', e.target.value as 'M' | 'F')}>
                   <option value="M">Masculino</option><option value="F">Feminino</option>
                 </select>
