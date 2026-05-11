@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 import datetime
 
@@ -12,6 +12,7 @@ class Medico(Base):
     crm = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     senha_hash = Column(String)
+    is_superadmin = Column(Boolean, default=False)
     
     diagnosticos = relationship("Diagnostico", back_populates="medico")
 
@@ -19,7 +20,7 @@ class Paciente(Base):
     __tablename__ = "pacientes"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
-    cpf = Column(String, index=True, nullable=True) # CPF opcional 
+    cpf = Column(String, index=True, nullable=True)
     idade = Column(Integer)
     sexo = Column(String)
     diagnosticos = relationship("Diagnostico", back_populates="paciente")
@@ -28,7 +29,7 @@ class Diagnostico(Base):
     __tablename__ = "diagnosticos"
     id = Column(Integer, primary_key=True, index=True)
     paciente_id = Column(Integer, ForeignKey("pacientes.id"))
-    medico_id = Column(Integer, ForeignKey("medicos.id"), nullable=True) # Vínculo com médico 
+    medico_id = Column(Integer, ForeignKey("medicos.id"), nullable=True)
     
     status = Column(String, default="PROCESSANDO")
     data_criacao = Column(DateTime, default=datetime.datetime.utcnow)

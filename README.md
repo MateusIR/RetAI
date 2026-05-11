@@ -40,7 +40,7 @@ meu-app-diagnostico/
 
 ## Pré-requisitos
 
-- **Python 3.10+**
+- **Python 3.11**
 - **Node.js 18+**
 - **Rust** (para compilar o app Tauri) — instale via https://rustup.rs
 - **Tauri CLI** — `cargo install tauri-cli` (ou via npm)
