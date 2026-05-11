@@ -23,13 +23,15 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [modalUsuarios, setModalUsuarios] = useState(false);
   const [modalSobre, setModalSobre] = useState(false);
+  
+  // NOVO: Controle do popup de confirmação de promoção
+  const [userToPromote, setUserToPromote] = useState<number | null>(null);
 
   // ── Gerenciamento de Usuários ─────────────────────────────────────────────
   const [listaUsers, setListaUsers] = useState<Usuario[]>([]);
   const [editUserId, setEditUserId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ nome: "", crm: "", email: "" });
 
-  // Escuta o evento disparado pelo useAuth quando o token expira automaticamente
   useEffect(() => {
     const handleSessaoExpirada = () => {
       alert("Sua sessão expirou. Por favor, faça login novamente.");
@@ -39,7 +41,7 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
-    logout(); // invalida no servidor + limpa sessionStorage
+    logout();
     setMenuOpen(false);
   };
 
@@ -219,9 +221,10 @@ export default function App() {
                             Editar
                           </button>
                         )}
+                        {/* ALTERADO: Agora aciona o popup de confirmação em vez de chamar a API direto */}
                         {user?.is_superadmin && !u.is_superadmin && (
                           <button
-                            onClick={() => handleActionUser(u.id, "prom")}
+                            onClick={() => setUserToPromote(u.id)}
                             className="text-xs text-emerald-400 hover:bg-emerald-400/10 px-2 py-1 rounded transition-colors"
                           >
                             Tornar Admin
@@ -242,6 +245,46 @@ export default function App() {
               ))}
             </div>
             <button onClick={() => setModalUsuarios(false)} className="btn-ghost w-full mt-4">Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmação de Promoção (NOVO) */}
+      {userToPromote !== null && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={(e) => e.target === e.currentTarget && setUserToPromote(null)}
+        >
+          <div className="card w-full max-w-sm p-6 text-center animate-slide-up border border-amber-500/30">
+            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-400">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Conceder Acesso Admin</h2>
+            <div className="text-sm text-slate-400 mb-6 space-y-3 text-left">
+              <p>Tem certeza que deseja promover este usuário a <strong>Superadmin</strong>?</p>
+              <div className="bg-surface-3 p-3 rounded-lg border border-surface-4">
+                <p className="text-xs font-semibold text-slate-300 mb-2">Este usuário terá poder para:</p>
+                <ul className="list-disc pl-4 text-xs text-amber-400/80 space-y-1">
+                  <li>Visualizar todos os diagnósticos da plataforma.</li>
+                  <li>Editar ou excluir qualquer conta (incluindo a sua).</li>
+                  <li>Conceder privilégios de Admin a outros usuários.</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setUserToPromote(null)} className="btn-ghost flex-1">Cancelar</button>
+              <button
+                onClick={() => {
+                  handleActionUser(userToPromote, "prom");
+                  setUserToPromote(null);
+                }}
+                className="bg-amber-500 hover:bg-amber-600 text-white font-medium px-4 py-2 rounded-lg flex-1 transition-colors"
+              >
+                Sim, Promover
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -99,8 +99,8 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
         sexo: form.sexo,
         tipo_od: form.od,
         tipo_oe: form.oe,
-        file_od: form.fileOd,
-        file_oe: form.fileOe,
+        file_od: form.fileOd ?? undefined,
+        file_oe: form.fileOe ?? undefined,
       })
       setDiagnosticoId(res.diagnostico_id)
       setStep('done')
@@ -116,7 +116,7 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
 
   if (step === 'done') {
     return (
-      <div className="flex flex-col items-center justify-center py-20 animate-slide-up">
+      <div className="flex flex-col items-center justify-center py-20 animate-slide-up mx-auto">
         <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mb-6">
           <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
         </div>
@@ -132,7 +132,7 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
   }
 
   return (
-    <div className="max-w-xl animate-fade-in">
+    <div className="max-w-xl mx-auto w-full mt-10 animate-fade-in">
       <div className="card p-6 space-y-6">
         <section>
           <h3 className="font-display text-base font-semibold text-white mb-4 flex items-center gap-2">

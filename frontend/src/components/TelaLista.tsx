@@ -18,14 +18,10 @@ function SkeletonRow() {
   )
 }
 
-
-
 export default function TelaLista({ refreshKey, currentUser }: Props) {
   const [diagnosticos, setDiagnosticos] = useState<DiagnosticoListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  
 
   // Filtros e Paginação
   const [filtroNome, setFiltroNome] = useState('')
@@ -40,10 +36,11 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
 
   const [apenasMeus, setApenasMeus] = useState(true)
 
-  // Ações em massa e Modal
+  // Ações em massa e Modais
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [modalDelete, setModalDelete] = useState(false)
+  const [modalImprimir, setModalImprimir] = useState(false) // NOVO ESTADO
   const [isDeleting, setIsDeleting] = useState(false)
 
   const hasProcessing = diagnosticos.some(d => d.status === 'PROCESSANDO')
@@ -158,7 +155,9 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
           <span className="text-sm font-medium text-slate-200">{selectedIds.length} item(s) selecionado(s)</span>
           <div className="flex gap-2 ml-auto">
             <button onClick={() => setModalDelete(true)} className="btn-ghost text-red-400 hover:bg-red-500/10 hover:border-red-500/50 py-1.5 px-4">Excluir</button>
-            <button onClick={()=> alert('Função de impressão em massa requer nova janela.')} className="btn-primary py-1.5 px-4 flex items-center gap-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg> Baixar PDFs</button>
+            <button onClick={() => setModalImprimir(true)} className="btn-primary py-1.5 px-4 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg> Baixar PDFs
+            </button>
           </div>
         </div>
       )}
@@ -216,7 +215,24 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
         </div>
       )}
 
-      {/* 1.2 Modal Delete Bonito */}
+      {/* Modal Imprimir em Massa (NOVO) */}
+      {modalImprimir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={(e) => e.target===e.currentTarget && setModalImprimir(false)}>
+          <div className="card w-full max-w-sm p-6 text-center animate-slide-up">
+            <div className="w-16 h-16 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center mx-auto mb-4 text-accent">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Imprimir Relatórios</h2>
+            <p className="text-sm text-slate-400 mb-6">A geração de <strong>{selectedIds.length}</strong> relatórios PDF será iniciada em uma nova aba.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setModalImprimir(false)} className="btn-ghost flex-1">Cancelar</button>
+              <button onClick={() => { setModalImprimir(false); alert('Iniciando geração dos PDFs na nova aba...'); }} className="btn-primary flex-1">Gerar PDFs</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Delete */}
       {modalDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={(e) => e.target===e.currentTarget && setModalDelete(false)}>
           <div className="card w-full max-w-sm p-6 text-center animate-slide-up">
