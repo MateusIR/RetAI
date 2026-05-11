@@ -46,7 +46,7 @@ DOENCAS_MOCK = [
     "Retinopatia Diabética",
     "Glaucoma",
     "Catarata",
-    "Degeneração Macular Relacionada à Idade",
+    "DMRI",
     "Oclusão de Veia Retiniana",
     "Normal",
 ]

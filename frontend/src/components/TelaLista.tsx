@@ -34,7 +34,7 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 30
 
-  const DOENCAS_COMUNS = ["Glaucoma", "Catarata", "Retinopatia Diabética", "DMRI", "Normal"]
+  const DOENCAS_COMUNS = ["Glaucoma", "Catarata", "Retinopatia Diabética", "DMRI", "Oclusão de Veia Retiniana"]
   const [doencas, setDoencas] = useState<string[]>([])
   const [doencasLogic, setDoencasLogic] = useState<'OR' | 'AND'>('OR')
 
