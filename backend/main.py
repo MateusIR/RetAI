@@ -7,9 +7,8 @@ from typing import Optional, List, Set
 from fastapi import FastAPI, UploadFile, File, Form, Depends, BackgroundTasks, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, func, Column, Integer, String, DateTime
 from sqlalchemy.orm import sessionmaker, Session
-
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -160,11 +159,22 @@ class AdminResetSenhaSchema(BaseModel):
 @app.post("/api/auth/solicitar-reset-local")
 def solicitar_reset_local(body: SolicitarResetLocalSchema, db: Session = Depends(get_db)):
     """Marca o usuário com uma flag para o admin ver no painel."""
-    medico = db.query(Medico).filter(Medico.email == body.email).first()
+    
+    # Remove espaços acidentais e padroniza tudo para minúsculo
+    email_limpo = body.email.strip().lower()
+    
+    # Busca o médico no banco comparando o e-mail também em minúsculo
+    medico = db.query(Medico).filter(func.lower(Medico.email) == email_limpo).first()
+    
     if medico:
-        medico.solicitou_reset = True
-        db.commit()
-    # Retornamos sucesso mesmo se não achar, para evitar enumerar e-mails válidos
+        try:
+            medico.solicitou_reset = True
+            db.commit()
+        except Exception:
+            db.rollback()
+            pass
+
+
     return {"message": "Se o e-mail estiver cadastrado, a solicitação foi enviada ao Administrador."}
 
 @app.post("/api/auth/admin-self-reset")

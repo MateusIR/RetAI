@@ -6,6 +6,12 @@ interface Props {
   onLogin: (token: string, user: any, expiresAt: number) => void;
 }
 
+const UFS_VALIDAS = [
+  "AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO",
+  "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR",
+  "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
+];
+
 export default function TelaAuth({ onLogin }: Props) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -17,13 +23,12 @@ export default function TelaAuth({ onLogin }: Props) {
   const [senha, setSenha] = useState("");
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
-  const [crm, setCrm] = useState("");
+  
+  const [crmNumero, setCrmNumero] = useState("");
+  const [crmUf, setCrmUf] = useState("");
 
   const formatCpf = (value: string) =>
     value.replace(/\D/g, "").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})/, "$1-$2").slice(0, 14);
-
-  const formatCrm = (value: string) =>
-    value.toUpperCase().replace(/[^0-9A-Z\-/-]/g, "").slice(0, 15);
 
   const evaluateStrength = (pw: string) => {
     if (!pw) return 0;
@@ -50,9 +55,16 @@ export default function TelaAuth({ onLogin }: Props) {
     setError("");
     setSuccessMsg("");
 
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email.trim())) {
+      return setError("Por favor, insira um endereço de e-mail real e válido (ex: dr@clinica.com.br).");
+    }
+
+    const crmCompleto = `${crmNumero}-${crmUf}`;
+
     if (mode === "register" || mode === "admin_self_reset") {
       if (cpf.length < 14) return setError("Por favor, insira um CPF válido.");
-      if (crm.length < 4) return setError("Por favor, insira um CRM válido.");
+      if (crmNumero.length < 4 || !crmUf) return setError("Por favor, insira um CRM e selecione a UF.");
       if (senha.length < 6) return setError("A senha deve ter pelo menos 6 caracteres.");
     }
 
@@ -60,7 +72,7 @@ export default function TelaAuth({ onLogin }: Props) {
     try {
       if (mode === "login") {
         const formData = new URLSearchParams();
-        formData.append("username", email);
+        formData.append("username", email.trim()); // Trim para evitar espaços acidentais
         formData.append("password", senha);
 
         const res = await fetch("http://localhost:8000/api/auth/login", {
@@ -81,12 +93,12 @@ export default function TelaAuth({ onLogin }: Props) {
         const res = await fetch("http://localhost:8000/api/medicos/registrar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome, cpf, crm, email, senha }),
+          body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), senha }),
         });
         
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || "Erro ao registrar.");
+          throw new Error(errData.detail || "Erro ao registrar. O e-mail ou CRM já pode estar em uso.");
         }
         setSuccessMsg("Conta criada com sucesso! Você já pode fazer login.");
         changeMode("login");
@@ -95,7 +107,7 @@ export default function TelaAuth({ onLogin }: Props) {
         const res = await fetch("http://localhost:8000/api/auth/solicitar-reset-local", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({ email: email.trim() }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || "Erro ao solicitar reset.");
@@ -106,7 +118,7 @@ export default function TelaAuth({ onLogin }: Props) {
         const res = await fetch("http://localhost:8000/api/auth/admin-self-reset", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome, cpf, crm, email, nova_senha: senha }),
+          body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), nova_senha: senha }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || "Dados incorretos.");
@@ -170,10 +182,34 @@ export default function TelaAuth({ onLogin }: Props) {
                   <label className="label">CPF</label>
                   <input required type="text" className="input-field font-mono text-sm" placeholder="000.000.000-00" maxLength={14} value={cpf} onChange={(e) => setCpf(formatCpf(e.target.value))} />
                 </div>
+                
+                {/* 4. Campo CRM Dividido (Número + Select UF) */}
                 <div>
-                  <label className="label">CRM</label>
-                  <input required type="text" className="input-field font-mono text-sm" placeholder="123456-UF" maxLength={15} value={crm} onChange={(e) => setCrm(formatCrm(e.target.value))} />
+                  <label className="label">CRM e UF</label>
+                  <div className="flex gap-2">
+                    <input 
+                      required 
+                      type="text" 
+                      className="input-field font-mono text-sm flex-1" 
+                      placeholder="CRM" 
+                      maxLength={10} 
+                      value={crmNumero} 
+                      onChange={(e) => setCrmNumero(e.target.value.replace(/\D/g, ""))} // Apenas números
+                    />
+                    <select
+                      required
+                      className="input-field font-mono text-sm w-20 px-2 cursor-pointer"
+                      value={crmUf}
+                      onChange={(e) => setCrmUf(e.target.value)}
+                    >
+                      <option value="" disabled>UF</option>
+                      {UFS_VALIDAS.map(uf => (
+                        <option key={uf} value={uf}>{uf}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
+
               </div>
             </div>
           )}

@@ -188,7 +188,7 @@ export default function App() {
             {menuOpen && (
               <div className="absolute top-10 right-0 w-48 bg-surface-2 border border-surface-4 rounded-xl shadow-2xl py-2 z-50">
                 <button onClick={() => { setMenuOpen(false); setModalUsuarios(true); loadUsers(); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-surface-3 transition-colors">
-                  Usuários {user?.is_superadmin && <span className="text-accent-glow ml-1 font-bold">(Admin)</span>}
+                  Usuários {user?.is_superadmin && <span className="text-accent-glow ml-1 font-bold">[Admin]</span>}
                 </button>
                 <button onClick={() => { setMenuOpen(false); setModalSobre(true); }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-surface-3 transition-colors">
                   Sobre a Plataforma
@@ -242,9 +242,9 @@ export default function App() {
                       </div>
                       
                       <div className="flex gap-2 flex-wrap justify-end">
-                        {user?.is_superadmin && (
-                          <button onClick={() => setResetUserId(u.id)} className={`${u.solicitou_reset ? 'text-orange-400 bg-orange-400/10 hover:bg-orange-400/20' : 'text-amber-400 hover:bg-amber-400/10'} text-xs px-2 py-1 rounded transition-colors font-medium border border-transparent`}>
-                            {u.solicitou_reset ? 'Processar Redefinição' : 'Redefinir Senha'}
+                        {user?.is_superadmin && u.solicitou_reset && (
+                          <button onClick={() => setResetUserId(u.id)} className="text-orange-400 bg-orange-400/10 hover:bg-orange-400/20 text-xs px-2 py-1 rounded transition-colors font-medium border border-transparent">
+                            Processar Redefinição
                           </button>
                         )}
                         {(user?.is_superadmin || u.id === user?.id) && (

@@ -105,6 +105,12 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
                   <div className="bg-surface-3 rounded-lg p-3 print:bg-gray-100 print:text-black">
                     <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">Paciente</p>
                     <p className="text-sm font-medium text-slate-200 print:text-black">{data.paciente}</p>
+                    {/* Adicionando o CPF com destaque logo abaixo do nome */}
+                    {data.cpf && (
+                      <p className="text-xs text-slate-400 mt-1 font-mono print:text-gray-700">
+                        CPF: {data.cpf}
+                      </p>
+                    )}
                   </div>
                   <div className="bg-surface-3 rounded-lg p-3 print:bg-gray-100 print:text-black">
                     <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">Idade / Sexo</p>
