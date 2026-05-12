@@ -13,6 +13,7 @@ class Medico(Base):
     email = Column(String, unique=True, index=True)
     senha_hash = Column(String)
     is_superadmin = Column(Boolean, default=False)
+    solicitou_reset = Column(Boolean, default=False)
     
     diagnosticos = relationship("Diagnostico", back_populates="medico")
 

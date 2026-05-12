@@ -15,7 +15,6 @@ function BarraConfianca({ valor }: { valor: number }) {
   )
 }
 
-// ✅ Novo componente: lightbox para expandir imagem
 function ImagemLightbox({ src, label, onClose }: { src: string; label: string; onClose: () => void }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -56,7 +55,7 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
   const [data, setData] = useState<DiagnosticoDetalhe | null>(null)
   const [loading, setLoading] = useState(true)
   const [mostrarImagens, setMostrarImagens] = useState(false)
-  const [imagemExpandida, setImagemExpandida] = useState<{ src: string; label: string } | null>(null) // ✅ novo estado
+  const [imagemExpandida, setImagemExpandida] = useState<{ src: string; label: string } | null>(null)
 
   useEffect(() => { fetchDiagnostico(diagnosticoId).then(setData).finally(() => setLoading(false)) }, [diagnosticoId])
 
@@ -74,7 +73,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
 
   return (
     <>
-      {/* ✅ Lightbox renderizado fora do modal principal */}
       {imagemExpandida && (
         <ImagemLightbox
           src={imagemExpandida.src}
@@ -133,7 +131,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
                       const src = `http://localhost:8000/imagens_salvas/${img.caminho.split(/[/\\]/).pop()}`
                       const label = `Olho ${img.tipo === 'OD' ? 'Direito (OD)' : 'Esquerdo (OE)'}`
                       return (
-                        // ✅ Adicionado cursor-zoom-in, group e onClick para abrir lightbox
                         <div
                           key={i}
                           className="rounded-lg overflow-hidden border border-surface-4 bg-black/50 print:border-gray-300 cursor-zoom-in group relative"
@@ -144,7 +141,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
                             alt={label}
                             className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
                           />
-                          {/* ✅ Ícone de zoom no hover */}
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center print:hidden">
                             <svg className="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16zM11 8v6M8 11h6" />
@@ -185,8 +181,12 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
                   <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-4 print:hidden">Ocorreu um erro durante o processamento deste diagnóstico.</div>
                 ) : null}
 
-                <div className="pt-3 border-t border-surface-4 flex justify-between text-xs text-slate-500 font-mono print:border-black print:text-gray-600 mt-6">
-                  <span>Modelo: {data.modelo_versao}</span><span>ID #{data.id}</span>
+                <div className="pt-3 border-t border-surface-4 flex justify-between items-end text-xs text-slate-500 font-mono print:border-black print:text-gray-600 mt-6">
+                  <div className="flex flex-col gap-1">
+                    <span>Modelo: {data.modelo_versao}</span>
+                    {data.cpf && <span>CPF / ID: {data.cpf}</span>}
+                  </div>
+                  <span>ID #{data.id}</span>
                 </div>
               </div>
             ) : null}

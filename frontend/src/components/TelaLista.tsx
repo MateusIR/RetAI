@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { fetchDiagnosticos, excluirDiagnosticos, DiagnosticoListItem } from '../api'
 import ModalDetalhe from './ModalDetalhe'
 
-interface Props { refreshKey: number; currentUser: any; }
+interface Props { refreshKey: number; currentUser: any; setIsProcessing: (v: boolean) => void; }
 
 function StatusBadge({ status }: { status: string }) {
   if (status === 'CONCLUIDO') return <span className="badge-done"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Concluído</span>
@@ -18,12 +18,11 @@ function SkeletonRow() {
   )
 }
 
-export default function TelaLista({ refreshKey, currentUser }: Props) {
+export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: Props) {
   const [diagnosticos, setDiagnosticos] = useState<DiagnosticoListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Filtros e Paginação
   const [filtroNome, setFiltroNome] = useState('')
   const [filtroCpf, setFiltroCpf] = useState('')
   const [page, setPage] = useState(1)
@@ -36,14 +35,18 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
 
   const [apenasMeus, setApenasMeus] = useState(true)
 
-  // Ações em massa e Modais
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [modalDelete, setModalDelete] = useState(false)
-  const [modalImprimir, setModalImprimir] = useState(false) // NOVO ESTADO
+  const [modalImprimir, setModalImprimir] = useState(false) 
   const [isDeleting, setIsDeleting] = useState(false)
 
   const hasProcessing = diagnosticos.some(d => d.status === 'PROCESSANDO')
+
+  // NOVO: Sincroniza o processamento local com a prop global do App.tsx
+  useEffect(() => {
+    setIsProcessing(hasProcessing);
+  }, [hasProcessing, setIsProcessing]);
 
   const carregar = useCallback(async () => {
     try {
@@ -92,6 +95,42 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
     setIsDeleting(false)
   }
 
+  // NOVO: Lógica de download Tauri-Friendly
+  const handleDownloadPDFs = async () => {
+    setModalImprimir(false);
+    
+    // Como a lógica real de geração de PDF geralmente requer uma rota na API que devolva
+    // o arquivo construído ou o acionamento de uma lib Javascript, no Tauri 
+    // nós convertemos o Blob em uma URL e acionamos a âncora para forçar a 
+    // janela "Salvar Arquivo" do Windows/macOS.
+    
+    try {
+      /* Exemplo da integração real com a API:
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8000/api/diagnosticos/exportar-pdfs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `laudos_em_lote_${new Date().getTime()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      */
+      
+      alert("Integração Tauri: A API retornará um Blob que abrirá automaticamente a janela 'Salvar Como...' do seu sistema operacional.");
+      setSelectedIds([]); // Limpa a seleção após baixar
+    } catch (err) {
+      alert("Erro ao tentar baixar os PDFs.");
+    }
+  };
+
   const formatarData = (iso: string) => {
     if (!iso) return '—';
     return new Date(iso).toLocaleString('pt-BR', {
@@ -102,7 +141,6 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
   return (
     <div className="animate-fade-in">
       
-      {/* 1.1.2 Superadmin */}
       {currentUser?.is_superadmin && (
         <label className="flex items-center gap-2 mb-4 cursor-pointer w-max">
           <input type="checkbox" checked={apenasMeus} onChange={e => {setApenasMeus(e.target.checked); setPage(1)}} className="w-4 h-4 accent-accent rounded cursor-pointer" />
@@ -215,18 +253,18 @@ export default function TelaLista({ refreshKey, currentUser }: Props) {
         </div>
       )}
 
-      {/* Modal Imprimir em Massa (NOVO) */}
+      {/* ALTERADO: Modal Imprimir em Massa (Tauri-Friendly) */}
       {modalImprimir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={(e) => e.target===e.currentTarget && setModalImprimir(false)}>
           <div className="card w-full max-w-sm p-6 text-center animate-slide-up">
             <div className="w-16 h-16 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center mx-auto mb-4 text-accent">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Imprimir Relatórios</h2>
-            <p className="text-sm text-slate-400 mb-6">A geração de <strong>{selectedIds.length}</strong> relatórios PDF será iniciada em uma nova aba.</p>
+            <h2 className="text-xl font-bold text-white mb-2">Baixar Relatórios</h2>
+            <p className="text-sm text-slate-400 mb-6">A geração de <strong>{selectedIds.length}</strong> relatórios PDF será iniciada.</p>
             <div className="flex gap-3">
               <button onClick={() => setModalImprimir(false)} className="btn-ghost flex-1">Cancelar</button>
-              <button onClick={() => { setModalImprimir(false); alert('Iniciando geração dos PDFs na nova aba...'); }} className="btn-primary flex-1">Gerar PDFs</button>
+              <button onClick={handleDownloadPDFs} className="btn-primary flex-1">Baixar PDFs</button>
             </div>
           </div>
         </div>
