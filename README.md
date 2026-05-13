@@ -1,6 +1,6 @@
 # OculAI — Diagnóstico Ocular (MVP)
 
-Sistema desktop para análise de doenças oculares a partir de imagens de fundoscopia / OCT.
+Sistema desktop para análise de doenças oculares a partir de imagens de fundoscopia.
 
 ## Stack
 

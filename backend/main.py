@@ -456,24 +456,28 @@ def listar_diagnosticos(
     }
 
 @app.get("/api/diagnosticos/{diagnostico_id}")
-def detalhe_diagnostico(diagnostico_id: int, db: Session = Depends(get_db), medico_atual: Medico = Depends(get_medico_atual)):
+def detalhe_diagnostico(
+    diagnostico_id: int,
+    db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual)
+):
     diag = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
     if not diag:
         raise HTTPException(status_code=404, detail="Diagnóstico não encontrado.")
     if not medico_atual.is_superadmin and diag.medico_id != medico_atual.id:
         raise HTTPException(status_code=403, detail="Acesso não autorizado.")
     return {
-        "id": diag.id,
-        "paciente": diag.paciente.nome,
-        "idade": diag.paciente.idade,
-        "sexo": diag.paciente.sexo,
-        "status": diag.status,
-        "data_criacao": diag.data_criacao.isoformat() if diag.data_criacao else None,
+        "id":            diag.id,
+        "paciente":      diag.paciente.nome,
+        "cpf":           diag.paciente.cpf,
+        "idade":         diag.paciente.idade,
+        "sexo":          diag.paciente.sexo,
+        "status":        diag.status,
+        "data_criacao":  diag.data_criacao.isoformat() if diag.data_criacao else None,
         "modelo_versao": diag.modelo_versao,
-        "imagens": [{"tipo": img.tipo, "caminho": img.caminho_arquivo} for img in diag.imagens],
-        "resultados": [{"doenca": r.doenca, "confianca": r.confianca, "olho": r.olho_analisado} for r in diag.resultados],
+        "imagens":       [{"tipo": img.tipo, "caminho": img.caminho_arquivo} for img in diag.imagens],
+        "resultados":    [{"doenca": r.doenca, "confianca": r.confianca, "olho": r.olho_analisado} for r in diag.resultados],
     }
-
 class DeleteModel(BaseModel):
     ids: List[int]
 

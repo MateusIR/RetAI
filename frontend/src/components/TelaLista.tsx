@@ -2,10 +2,20 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { fetchDiagnosticos, excluirDiagnosticos, DiagnosticoListItem } from '../api'
 import ModalDetalhe from './ModalDetalhe'
 
-interface Props { refreshKey: number; currentUser: any; setIsProcessing: (v: boolean) => void; }
+// Tipo do showAlert/showConfirm passado pelo App
+type ShowAlert   = (title: string, message: string, type?: 'info' | 'warning' | 'danger') => Promise<void>
+type ShowConfirm = (title: string, message: string, type?: 'info' | 'warning' | 'danger', confirmLabel?: string, cancelLabel?: string) => Promise<boolean>
+
+interface Props {
+  refreshKey: number
+  currentUser: any
+  setIsProcessing: (v: boolean) => void
+  showAlert: ShowAlert
+  showConfirm: ShowConfirm
+}
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'CONCLUIDO') return <span className="badge-done"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Concluído</span>
+  if (status === 'CONCLUIDO')   return <span className="badge-done"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Concluído</span>
   if (status === 'PROCESSANDO') return <span className="badge-processing"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block animate-pulse" /> Processando</span>
   return <span className="badge-error"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" /> Erro</span>
 }
@@ -13,40 +23,36 @@ function StatusBadge({ status }: { status: string }) {
 function SkeletonRow() {
   return (
     <tr className="border-b border-surface-4">
-      {[1, 2, 3, 4, 5, 6].map(i => <td key={i} className="px-4 py-3"><div className="shimmer-line" style={{ width: `${60 + i * 5}%` }} /></td>)}
+      {[1,2,3,4,5,6].map(i => <td key={i} className="px-4 py-3"><div className="shimmer-line" style={{ width: `${60 + i * 5}%` }} /></td>)}
     </tr>
   )
 }
 
-export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: Props) {
+export default function TelaLista({ refreshKey, currentUser, setIsProcessing, showAlert, showConfirm }: Props) {
   const [diagnosticos, setDiagnosticos] = useState<DiagnosticoListItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading]           = useState(true)
+  const [error, setError]               = useState<string | null>(null)
 
   const [filtroNome, setFiltroNome] = useState('')
-  const [filtroCpf, setFiltroCpf] = useState('')
-  const [page, setPage] = useState(1)
+  const [filtroCpf, setFiltroCpf]   = useState('')
+  const [page, setPage]             = useState(1)
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 30
 
   const DOENCAS_COMUNS = ["Glaucoma", "Catarata", "Retinopatia Diabética", "DMRI", "Oclusão de Veia Retiniana"]
-  const [doencas, setDoencas] = useState<string[]>([])
+  const [doencas, setDoencas]           = useState<string[]>([])
   const [doencasLogic, setDoencasLogic] = useState<'OR' | 'AND'>('OR')
-
-  const [apenasMeus, setApenasMeus] = useState(true)
+  const [apenasMeus, setApenasMeus]     = useState(true)
 
   const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId]   = useState<number | null>(null)
   const [modalDelete, setModalDelete] = useState(false)
-  const [modalImprimir, setModalImprimir] = useState(false) 
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [modalImprimir, setModalImprimir] = useState(false)
+  const [isDeleting, setIsDeleting]   = useState(false)
 
   const hasProcessing = diagnosticos.some(d => d.status === 'PROCESSANDO')
 
-  // NOVO: Sincroniza o processamento local com a prop global do App.tsx
-  useEffect(() => {
-    setIsProcessing(hasProcessing);
-  }, [hasProcessing, setIsProcessing]);
+  useEffect(() => { setIsProcessing(hasProcessing) }, [hasProcessing, setIsProcessing])
 
   const carregar = useCallback(async () => {
     try {
@@ -89,66 +95,59 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
       setSelectedIds([])
       setModalDelete(false)
       carregar()
-    } catch (e) {
-      alert("Erro ao excluir diagnósticos")
+    } catch {
+      await showAlert("Erro", "Não foi possível excluir os diagnósticos selecionados.", 'danger')
     }
     setIsDeleting(false)
   }
 
-  // NOVO: Lógica de download Tauri-Friendly
   const handleDownloadPDFs = async () => {
-    setModalImprimir(false);
-    
-    // Como a lógica real de geração de PDF geralmente requer uma rota na API que devolva
-    // o arquivo construído ou o acionamento de uma lib Javascript, no Tauri 
-    // nós convertemos o Blob em uma URL e acionamos a âncora para forçar a 
-    // janela "Salvar Arquivo" do Windows/macOS.
-    
+    setModalImprimir(false)
     try {
-      /* Exemplo da integração real com a API:
-      const token = localStorage.getItem('token');
+      /* Integração real:
+      const token = sessionStorage.getItem('retai_token');
       const response = await fetch('http://localhost:8000/api/diagnosticos/exportar-pdfs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ ids: selectedIds })
       });
-      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `laudos_em_lote_${new Date().getTime()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
+      a.href = url; a.download = `laudos_${Date.now()}.pdf`;
+      document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       */
-      
-      alert("Integração Tauri: A API retornará um Blob que abrirá automaticamente a janela 'Salvar Como...' do seu sistema operacional.");
-      setSelectedIds([]); // Limpa a seleção após baixar
-    } catch (err) {
-      alert("Erro ao tentar baixar os PDFs.");
+      await showAlert(
+        "Download Iniciado",
+        "A API retornará um arquivo PDF que será salvo automaticamente pelo seu sistema operacional.",
+        'info'
+      )
+      setSelectedIds([])
+    } catch {
+      await showAlert("Erro no Download", "Não foi possível gerar os PDFs. Tente novamente.", 'danger')
     }
-  };
+  }
 
   const formatarData = (iso: string) => {
-    if (!iso) return '—';
+    if (!iso) return '—'
     return new Date(iso).toLocaleString('pt-BR', {
       day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
-    });
-  };
+    })
+  }
 
   return (
     <div className="animate-fade-in">
-      
+
       {currentUser?.is_superadmin && (
         <label className="flex items-center gap-2 mb-4 cursor-pointer w-max">
-          <input type="checkbox" checked={apenasMeus} onChange={e => {setApenasMeus(e.target.checked); setPage(1)}} className="w-4 h-4 accent-accent rounded cursor-pointer" />
+          <input type="checkbox" checked={apenasMeus} onChange={e => { setApenasMeus(e.target.checked); setPage(1) }} className="w-4 h-4 accent-accent rounded cursor-pointer" />
           <span className="text-sm font-medium text-slate-300">Mostrar apenas os meus diagnósticos.</span>
         </label>
       )}
 
-      {/* Filtros Básicos */}
+      {/* Filtros básicos */}
       <div className="flex gap-3 mb-4">
         <div className="flex-1">
           <label className="label">Paciente</label>
@@ -166,13 +165,13 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
         </div>
       </div>
 
-      {/* Filtro Avançado Doenças */}
+      {/* Filtro doenças */}
       <div className="bg-surface-2 p-4 rounded-xl border border-surface-4 mb-6">
         <div className="flex justify-between items-center mb-3">
           <label className="label m-0 text-slate-300">Filtrar por Patologias Detectadas</label>
           <div className="flex bg-surface-3 rounded-lg p-0.5 border border-surface-4">
-            <button onClick={()=>setDoencasLogic('OR')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'OR' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Qualquer uma (OU)</button>
-            <button onClick={()=>setDoencasLogic('AND')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'AND' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Todas (E)</button>
+            <button onClick={() => setDoencasLogic('OR')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'OR' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Qualquer uma (OU)</button>
+            <button onClick={() => setDoencasLogic('AND')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'AND' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>Todas (E)</button>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -187,14 +186,15 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
       {hasProcessing && <div className="flex items-center gap-2 text-xs text-amber-400 mb-4 px-1"><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" /> Atualizando automaticamente enquanto há diagnósticos em processamento...</div>}
       {error && <div className="card p-4 mb-4 border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-center gap-3"><svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{error}</div>}
 
-      {/* Ações em Massa */}
+      {/* Ações em massa */}
       {selectedIds.length > 0 && (
         <div className="flex items-center gap-4 mb-4 p-3 bg-surface-2 rounded-xl border border-accent/30 animate-slide-up">
           <span className="text-sm font-medium text-slate-200">{selectedIds.length} item(s) selecionado(s)</span>
           <div className="flex gap-2 ml-auto">
             <button onClick={() => setModalDelete(true)} className="btn-ghost text-red-400 hover:bg-red-500/10 hover:border-red-500/50 py-1.5 px-4">Excluir</button>
             <button onClick={() => setModalImprimir(true)} className="btn-primary py-1.5 px-4 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg> Baixar PDFs
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              Baixar PDFs
             </button>
           </div>
         </div>
@@ -216,26 +216,35 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
             </tr>
           </thead>
           <tbody>
-            {loading ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />) : diagnosticos.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">Nenhum diagnóstico encontrado</td></tr>
-              ) : diagnosticos.map(diag => (
-                <tr key={diag.id} className={`border-b border-surface-4/60 hover:bg-surface-3/50 cursor-pointer transition-colors duration-150 ${selectedIds.includes(diag.id) ? 'bg-accent/5' : ''}`} onClick={() => setSelectedId(diag.id)}>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <input type="checkbox" className="w-4 h-4 accent-accent cursor-pointer rounded" checked={selectedIds.includes(diag.id)} onChange={(e) => { if (e.target.checked) setSelectedIds([...selectedIds, diag.id]); else setSelectedIds(selectedIds.filter(id => id !== diag.id)) }} />
-                  </td>
-                  <td className="px-4 py-3 font-medium text-slate-200">{diag.paciente}</td>
-                  <td className="px-4 py-3 text-slate-400">{diag.idade} anos · {diag.sexo === 'M' ? 'Masc.' : 'Fem.'}</td>
-                  <td className="px-4 py-3"><StatusBadge status={diag.status} /></td>
-                  <td className="px-4 py-3">
-                    {diag.doencas_detectadas && diag.doencas_detectadas.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {diag.doencas_detectadas.map(d => <span key={d} className="px-2 py-0.5 rounded-md text-[10px] bg-accent/15 text-accent-glow border border-accent/20">{d}</span>)}
-                      </div>
-                    ) : <span className="text-slate-500">—</span>}
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">{formatarData(diag.data_criacao)}</td>
-                </tr>
-              ))
+            {loading ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />) :
+             diagnosticos.length === 0 ? (
+               <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">Nenhum diagnóstico encontrado</td></tr>
+             ) : diagnosticos.map(diag => (
+               <tr
+                 key={diag.id}
+                 className={`border-b border-surface-4/60 hover:bg-surface-3/50 cursor-pointer transition-colors duration-150 ${selectedIds.includes(diag.id) ? 'bg-accent/5' : ''}`}
+                 onClick={() => setSelectedId(diag.id)}
+               >
+                 <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                   <input
+                     type="checkbox" className="w-4 h-4 accent-accent cursor-pointer rounded"
+                     checked={selectedIds.includes(diag.id)}
+                     onChange={e => { if (e.target.checked) setSelectedIds([...selectedIds, diag.id]); else setSelectedIds(selectedIds.filter(id => id !== diag.id)) }}
+                   />
+                 </td>
+                 <td className="px-4 py-3 font-medium text-slate-200">{diag.paciente}</td>
+                 <td className="px-4 py-3 text-slate-400">{diag.idade} anos · {diag.sexo === 'M' ? 'Masc.' : 'Fem.'}</td>
+                 <td className="px-4 py-3"><StatusBadge status={diag.status} /></td>
+                 <td className="px-4 py-3">
+                   {diag.doencas_detectadas && diag.doencas_detectadas.length > 0 ? (
+                     <div className="flex flex-wrap gap-1">
+                       {diag.doencas_detectadas.map(d => <span key={d} className="px-2 py-0.5 rounded-md text-[10px] bg-accent/15 text-accent-glow border border-accent/20">{d}</span>)}
+                     </div>
+                   ) : <span className="text-slate-500">—</span>}
+                 </td>
+                 <td className="px-4 py-3 text-slate-400 font-mono text-xs">{formatarData(diag.data_criacao)}</td>
+               </tr>
+             ))
             }
           </tbody>
         </table>
@@ -253,15 +262,15 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
         </div>
       )}
 
-      {/* ALTERADO: Modal Imprimir em Massa (Tauri-Friendly) */}
+      {/* Modal Imprimir */}
       {modalImprimir && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={(e) => e.target===e.currentTarget && setModalImprimir(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && setModalImprimir(false)}>
           <div className="card w-full max-w-sm p-6 text-center animate-slide-up">
             <div className="w-16 h-16 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center mx-auto mb-4 text-accent">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Baixar Relatórios</h2>
-            <p className="text-sm text-slate-400 mb-6">A geração de <strong>{selectedIds.length}</strong> relatórios PDF será iniciada.</p>
+            <p className="text-sm text-slate-400 mb-6">A geração de <strong>{selectedIds.length}</strong> relatório(s) PDF será iniciada.</p>
             <div className="flex gap-3">
               <button onClick={() => setModalImprimir(false)} className="btn-ghost flex-1">Cancelar</button>
               <button onClick={handleDownloadPDFs} className="btn-primary flex-1">Baixar PDFs</button>
@@ -272,7 +281,7 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
 
       {/* Modal Delete */}
       {modalDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={(e) => e.target===e.currentTarget && setModalDelete(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && setModalDelete(false)}>
           <div className="card w-full max-w-sm p-6 text-center animate-slide-up">
             <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto mb-4 text-red-400">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -282,7 +291,10 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing }: 
             <div className="flex gap-3">
               <button onClick={() => setModalDelete(false)} className="btn-ghost flex-1">Cancelar</button>
               <button onClick={handleDeleteMassa} disabled={isDeleting} className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg flex-1 transition-colors flex justify-center items-center">
-                {isDeleting ? <svg className="w-4 h-4 animate-spin text-white/70" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> : 'Sim, Excluir'}
+                {isDeleting
+                  ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                  : 'Sim, Excluir'
+                }
               </button>
             </div>
           </div>

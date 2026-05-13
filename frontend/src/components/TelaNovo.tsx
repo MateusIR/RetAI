@@ -180,7 +180,7 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
                 </div>
                 <span className="text-sm font-medium text-slate-200">Olho Direito (OD)</span>
               </label>
-              {form.od && <div className="animate-slide-up"><FileDropZone label="Imagem do Olho Direito (fundoscopia / OCT)" file={form.fileOd} onChange={f => setField('fileOd', f)} /></div>}
+              {form.od && <div className="animate-slide-up"><FileDropZone label="Imagem do Olho Direito (fundoscopia)" file={form.fileOd} onChange={f => setField('fileOd', f)} /></div>}
             </div>
 
             <div>
@@ -190,7 +190,7 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
                 </div>
                 <span className="text-sm font-medium text-slate-200">Olho Esquerdo (OE)</span>
               </label>
-              {form.oe && <div className="animate-slide-up"><FileDropZone label="Imagem do Olho Esquerdo (fundoscopia / OCT)" file={form.fileOe} onChange={f => setField('fileOe', f)} /></div>}
+              {form.oe && <div className="animate-slide-up"><FileDropZone label="Imagem do Olho Esquerdo (fundoscopia)" file={form.fileOe} onChange={f => setField('fileOe', f)} /></div>}
             </div>
           </div>
         </section>
