@@ -2,21 +2,23 @@
 validators.py — Validação de CPF e CRM para o RetAI.
 
 CPF : algoritmo oficial dos dígitos verificadores (100 % local, sem chamada externa).
-CRM : consulta a API REST pública do portal CFM. Sem chave de acesso necessária.
-      Endpoint descoberto em: portal.cfm.org.br/api_rest_php/api/v1/medicos/
+CRM : consulta a API consultacrm.com.br com fallback automático entre duas chaves.
+      Em caso de cota esgotada na primeira chave, tenta a segunda automaticamente.
 
 Comportamento de rede:
   - Timeout de 8 s por tentativa.
-  - Se o CFM estiver fora do ar ou sem internet → ValidationError com mensagem específica
-    para que o frontend mostre "Não foi possível verificar o CRM agora. Tente novamente."
-  - Se o CRM não for encontrado → ValidationError "CRM não encontrado no cadastro do CFM."
+  - Chave esgotada/inválida → tenta a próxima chave da lista.
+  - Todas as chaves esgotadas → 503 com mensagem para o administrador.
+  - CRM não encontrado → 404.
+  - Erros de rede/servidor → 503.
 """
 
+from os import getenv
 import re
 import unicodedata
 import httpx
 from fastapi import HTTPException
-
+from sqlalchemy.orm import Session
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -113,9 +115,6 @@ _UFS_VALIDAS = {
     "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO",
 }
 
-# Base da API REST pública do Portal CFM (sem autenticação)
-# Endpoint de busca: GET /medicos/busca?numero=XXXXX&uf=UF
-_CFM_API_BASE = "https://portal.cfm.org.br/api_rest_php/api/v1/medicos"
 
 # Timeout em segundos para a chamada ao CFM
 _CFM_TIMEOUT = 8.0
@@ -154,95 +153,84 @@ def _parse_crm(crm: str) -> tuple[str, str]:
         )
 
     return numero, uf
+_CONSULTACRM_BASE = "https://www.consultacrm.com.br/api/index.php"
+_CONSULTACRM_KEYS = [k for k in getenv("CONSULTACRM_KEYS", "").split(",") if k]  # tenta a primeira, cai na segunda se esgotar
 
-
-async def validar_crm(crm: str) -> dict:
+async def _consultar_crm_com_chave(numero: str, uf: str, chave: str) -> dict | None:
     """
-    Valida o CRM consultando a API pública do CFM.
-
-    Retorna dict com dados do médico encontrado (nome, situação, etc.).
-    Levanta HTTPException com código e mensagem adequados em caso de falha.
-
-    Códigos de erro retornados:
-      422 — CRM com formato inválido ou UF desconhecida
-      404 — CRM não encontrado no cadastro do CFM
-      503 — CFM inacessível (sem internet ou servidor fora do ar)
+    Faz uma tentativa com a chave fornecida.
+    Retorna o JSON se ok, None se a chave estiver esgotada/inválida,
+    ou levanta HTTPException para erros de rede/servidor.
     """
-    numero, uf = _parse_crm(crm)
-
-    url = f"{_CFM_API_BASE}/busca"
-    params = {"numero": numero, "uf": uf}
-
+    params = {
+        "tipo": "crm",
+        "uf": uf,
+        "q": numero,
+        "chave": chave,
+        "destino": "json",
+    }
     try:
-        async with httpx.AsyncClient(timeout=_CFM_TIMEOUT) as client:
-            resp = await client.get(url, params=params)
+        async with httpx.AsyncClient(timeout=_CFM_TIMEOUT, follow_redirects=True) as client:
+            resp = await client.get(_CONSULTACRM_BASE, params=params)
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Não foi possível conectar ao servidor do CFM. "
-                "Verifique sua conexão com a internet e tente novamente."
-            ),
-        )
+        raise HTTPException(503, "Não foi possível conectar ao serviço de validação de CRM.")
     except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "O servidor do CFM demorou demais para responder (timeout de 8 s). "
-                "Tente novamente em instantes."
-            ),
-        )
+        raise HTTPException(503, "Timeout ao consultar o CRM. Tente novamente.")
     except httpx.RequestError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Erro de rede ao consultar o CFM: {exc}",
-        )
+        raise HTTPException(503, f"Erro de rede: {exc}")
 
-    # HTTP 200 esperado; qualquer outro código é falha do servidor do CFM
     if resp.status_code != 200:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                f"O servidor do CFM retornou status {resp.status_code}. "
-                "Tente novamente mais tarde."
-            ),
-        )
+        raise HTTPException(503, f"Serviço de CRM retornou status {resp.status_code}.")
 
     try:
         data = resp.json()
     except Exception:
+        raise HTTPException(503, "Resposta inesperada do serviço de CRM.")
+
+    # Chave esgotada ou inválida — a API retorna erro nesse campo
+    erro = data.get("erro") or data.get("error") or ""
+    if erro and any(p in str(erro).lower() for p in ("limite", "cota", "chave", "invalid", "key")):
+        return None  # sinaliza para tentar a próxima chave
+
+    return data
+
+
+async def validar_crm(crm: str) -> dict:
+    numero, uf = _parse_crm(crm)
+
+    data = None
+    for chave in _CONSULTACRM_KEYS:
+        data = await _consultar_crm_com_chave(numero, uf, chave)
+        if data is not None:
+            break
+
+    if data is None:
         raise HTTPException(
-            status_code=503,
-            detail="Resposta inesperada do servidor do CFM (não é JSON válido).",
+            503,
+            "Limite de consultas de CRM atingido em todas as chaves disponíveis. \n"
+            "Tente novamente amanhã ou contate o administrador. \n"
+            "Em caso de urgencia, crie uma conta não verificada momentaneamente até o limite ser renovado."
         )
 
-    # A API retorna {"status": "sucesso", "dados": [...]} ou {"status": "erro", ...}
-    status = data.get("status", "")
-    dados = data.get("dados") or []
+    total = int(data.get("total", 0))
+    items = data.get("item") or []   # ← "item" (singular), não "items"
 
-    if status != "sucesso" or not dados:
+    if not total or not items:
         raise HTTPException(
-            status_code=404,
-            detail=(
-                f"CRM {numero}/{uf} não encontrado no cadastro do CFM. "
-                "Verifique o número e o estado e tente novamente."
-            ),
+            404,
+            f"CRM {numero}/{uf} não encontrado. Verifique o número e o estado."
         )
 
-    # Verifica situação da inscrição (ativa/inativa)
-    medico_data = dados[0] if isinstance(dados, list) else dados
-    situacao = str(medico_data.get("DS_SITUACAO", "")).upper()
-    nome_cfm = medico_data.get("NM_MEDICO", "")
+    medico = items[0]
+    situacao = str(medico.get("situacao", "")).upper()
+    nome_cfm = medico.get("nome", "")
 
-    # Situações que bloqueiam o cadastro
-    situacoes_invalidas = {"CANCELADO", "SUSPENSO", "INATIVO", "FALECIDO"}
+    situacoes_invalidas = {"CANCELADO", "SUSPENSO", "INATIVO", "FALECIDO", "TRANSFERIDO"}
     if any(s in situacao for s in situacoes_invalidas):
         raise HTTPException(
-            status_code=422,
-            detail=(
-                f"CRM {numero}/{uf} está com situação '{situacao}' no CFM "
-                "e não pode ser usado para cadastro."
-            ),
+            422,
+            f"CRM {numero}/{uf} está com situação '{situacao}' no cadastro "
+            "e não pode ser usado para cadastro."
         )
 
     return {
@@ -250,5 +238,51 @@ async def validar_crm(crm: str) -> dict:
         "uf": uf,
         "nome_cfm": nome_cfm,
         "situacao": situacao,
-        "dados_completos": medico_data,
+        "dados_completos": medico,
     }
+    
+# ──────────────────────────────────────────────────────────────────────────────
+# UNICIDADE — Verificação de duplicatas no banco antes de consultar o CRM
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+
+def verificar_unicidade_medico(
+    db: Session,
+    email: str,
+    cpf: str,
+    crm: str,
+    medico_id: int | None = None,  # passar ao editar, None ao criar
+) -> None:
+    """
+    Verifica se email, CPF e CRM já estão cadastrados.
+    Levanta HTTPException 409 com campo específico em caso de conflito.
+    medico_id é usado para excluir o próprio registro na edição.
+    """
+    # Import aqui para evitar circular import — ajuste o path se necessário
+    from models import Medico  # ← troque por seu import real
+
+    filtro_base = db.query(Medico)
+    if medico_id:
+        filtro_base = filtro_base.filter(Medico.id != medico_id)
+
+    if filtro_base.filter(Medico.email == email.strip().lower()).first():
+        raise HTTPException(
+            status_code=409,
+            detail="Este e-mail já está cadastrado. Faça login ou use outro e-mail.",
+        )
+
+    cpf_clean = re.sub(r"\D", "", cpf)
+    if filtro_base.filter(Medico.cpf == cpf).first():
+        raise HTTPException(
+            status_code=409,
+            detail="Este CPF já está cadastrado.",
+        )
+
+    numero, uf = _parse_crm(crm)  # já valida formato
+    crm_normalizado = f"{numero}-{uf}"
+    if filtro_base.filter(Medico.crm == crm_normalizado).first():
+        raise HTTPException(
+            status_code=409,
+            detail="Este CRM já está cadastrado.",
+        )

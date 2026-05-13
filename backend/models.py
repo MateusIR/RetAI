@@ -36,7 +36,7 @@ class Diagnostico(Base):
     data_criacao = Column(DateTime, default=datetime.datetime.utcnow)
     data_finalizacao = Column(DateTime, nullable=True)
     modelo_versao = Column(String, default="mock-v0.1")
-
+    parecer = Column(String, nullable=True)
     paciente = relationship("Paciente", back_populates="diagnosticos")
     medico = relationship("Medico", back_populates="diagnosticos")
     imagens = relationship("Imagem", back_populates="diagnostico")

@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { fetchDiagnosticos, excluirDiagnosticos, DiagnosticoListItem } from '../api'
-import ModalDetalhe from './ModalDetalhe'
+import React, { useState, useEffect, useCallback } from 'react';
+import { fetchDiagnosticos, excluirDiagnosticos, DiagnosticoListItem } from '../api';
+import ModalDetalhe from './ModalDetalhe';
 
-// Tipo do showAlert/showConfirm passado pelo App
-type ShowAlert   = (title: string, message: string, type?: 'info' | 'warning' | 'danger') => Promise<void>
-type ShowConfirm = (title: string, message: string, type?: 'info' | 'warning' | 'danger', confirmLabel?: string, cancelLabel?: string) => Promise<boolean>
+type ShowAlert   = (title: string, message: string, type?: 'info' | 'warning' | 'danger') => Promise<void>;
+type ShowConfirm = (title: string, message: string, type?: 'info' | 'warning' | 'danger', confirmLabel?: string, cancelLabel?: string) => Promise<boolean>;
 
 interface Props {
-  refreshKey: number
-  currentUser: any
-  setIsProcessing: (v: boolean) => void
-  showAlert: ShowAlert
-  showConfirm: ShowConfirm
+  refreshKey: number;
+  currentUser: any;
+  setIsProcessing: (v: boolean) => void;
+  showAlert: ShowAlert;
+  showConfirm: ShowConfirm;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -102,34 +101,42 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
   }
 
   const handleDownloadPDFs = async () => {
-    setModalImprimir(false)
+    setModalImprimir(false);
     try {
-      /* Integração real:
       const token = sessionStorage.getItem('retai_token');
       const response = await fetch('http://localhost:8000/api/diagnosticos/exportar-pdfs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ ids: selectedIds })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ids: selectedIds }),
       });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.detail || 'Erro ao gerar PDFs.');
+      }
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `laudos_${Date.now()}.pdf`;
-      document.body.appendChild(a); a.click();
+      a.href = url;
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const filenameMatch = disposition.match(/filename="?(.+?)"?$/);
+      a.download = filenameMatch ? filenameMatch[1] : `laudos_${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      */
-      await showAlert(
-        "Download Iniciado",
-        "A API retornará um arquivo PDF que será salvo automaticamente pelo seu sistema operacional.",
-        'info'
-      )
-      setSelectedIds([])
-    } catch {
-      await showAlert("Erro no Download", "Não foi possível gerar os PDFs. Tente novamente.", 'danger')
-    }
-  }
 
+      await showAlert('Download concluído', 'Os relatórios foram salvos com sucesso.', 'info');
+      setSelectedIds([]);
+    } catch (err: any) {
+      await showAlert('Erro no Download', err.message || 'Não foi possível gerar os PDFs.', 'danger');
+    }
+  };
+  
   const formatarData = (iso: string) => {
     if (!iso) return '—'
     return new Date(iso).toLocaleString('pt-BR', {

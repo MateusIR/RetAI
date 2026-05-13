@@ -72,6 +72,7 @@ export interface DiagnosticoListItem {
 export interface DiagnosticoDetalhe extends DiagnosticoListItem {
   imagens: { tipo: string; caminho: string }[];
   resultados: ResultadoItem[];
+  parecer?: string;
 }
 export interface PaginatedResponse<T> {
   total: number;
@@ -167,5 +168,12 @@ export async function excluirDiagnosticos(ids: number[]) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),
+  });
+}
+export async function atualizarParecer(diagnosticoId: number, parecer: string): Promise<void> {
+  await apiFetch(`${BASE}/api/diagnosticos/${diagnosticoId}/parecer`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ parecer }),
   });
 }

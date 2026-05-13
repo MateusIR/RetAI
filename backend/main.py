@@ -1,6 +1,8 @@
 import shutil
 import uuid
 import os
+from dotenv import load_dotenv
+load_dotenv()
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Set
 
@@ -13,13 +15,17 @@ from pydantic import BaseModel
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
+from fpdf import FPDF
+from io import BytesIO
+from fastapi.responses import StreamingResponse
+import os as _os
 
 from models import Base, Medico, Paciente, Diagnostico, Imagem, Resultado
 from ml_engine import analisar_imagem, MODEL_VERSION
 from validators import validar_cpf, validar_crm, validar_correspondencia_nome
+
 # ── Configuração JWT ──────────────────────────────────────────────────────────
-# Em produção, use: SECRET_KEY = secrets.token_hex(32) gerado uma vez e salvo em .env
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "TROQUE-ISTO-POR-UMA-CHAVE-FORTE-EM-PRODUCAO")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "TROQUE-ISTO-POR-UMA-CHAVE-FORTE-EM-PRODUCAO") #env
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -154,6 +160,8 @@ class AdminSelfResetSchema(BaseModel):
 class AdminResetSenhaSchema(BaseModel):
     nova_senha: str
 
+class ParecerUpdate(BaseModel):
+    parecer: str
 # ── Rotas de Redefinição de Senha (Local) ─────────────────────────────────────
 
 @app.post("/api/auth/solicitar-reset-local")
@@ -225,35 +233,40 @@ async def registrar_medico(
     medico: MedicoCreate,
     db: Session = Depends(get_db),
 ):
-    # 1. E-mail único
-    if db.query(Medico).filter(Medico.email == medico.email).first():
-        raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
-
-    # 2. Senha
+    # 1. Validações de formato (local, sem rede)
     if len(medico.senha) < 6:
-        raise HTTPException(status_code=400, detail="Senha deve ter ao menos 6 caracteres.")
+        raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres.")
 
-    # 3. CPF (síncrono, local)
     validar_cpf(medico.cpf)
 
-    # 4. CRM (assíncrono, rede)
+    # 2. Unicidade no banco (local, sem rede) — antes de gastar consulta na API
+    if db.query(Medico).filter(Medico.email == medico.email.strip().lower()).first():
+        raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
+
+    if db.query(Medico).filter(Medico.cpf == medico.cpf).first():
+        raise HTTPException(status_code=409, detail="Este CPF já está cadastrado.")
+
+    if db.query(Medico).filter(Medico.crm == medico.crm).first():
+        raise HTTPException(status_code=409, detail="Este CRM já está cadastrado.")
+
+    # 3. Consulta externa ao CRM (rede) — só chega aqui se tudo acima passou
     crm_dados = await validar_crm(medico.crm)
     nome_cfm = crm_dados.get("nome_cfm", "")
 
-    # 5. Validação de correspondência de Nome
+    # 4. Correspondência de nome com o CFM
     if not nome_cfm or not validar_correspondencia_nome(medico.nome, nome_cfm):
         raise HTTPException(
-            status_code=400, 
-            detail=f"O nome informado não confere com o titular do CRM no Conselho. (Nome CFM: {nome_cfm})"
+            status_code=422,
+            detail="O nome informado não confere com o titular do CRM no Conselho."
         )
 
-    # 6. Salvar no Banco
+    # 5. Persiste
     is_first = db.query(Medico).count() == 0
     novo_medico = Medico(
         nome=medico.nome,
         cpf=medico.cpf,
         crm=medico.crm,
-        email=medico.email,
+        email=medico.email.strip().lower(),
         senha_hash=pwd_context.hash(medico.senha),
         is_superadmin=is_first,
     )
@@ -477,6 +490,7 @@ def detalhe_diagnostico(
         "modelo_versao": diag.modelo_versao,
         "imagens":       [{"tipo": img.tipo, "caminho": img.caminho_arquivo} for img in diag.imagens],
         "resultados":    [{"doenca": r.doenca, "confianca": r.confianca, "olho": r.olho_analisado} for r in diag.resultados],
+        "parecer":      diag.parecer,
     }
 class DeleteModel(BaseModel):
     ids: List[int]
@@ -494,3 +508,345 @@ def excluir_diagnosticos(req: DeleteModel, db: Session = Depends(get_db), medico
             count += 1
     db.commit()
     return {"excluidos": count}
+
+# ── Rotas de Parecer ────────────────────────────────────────────────────────
+
+
+@app.put("/api/diagnosticos/{diagnostico_id}/parecer")
+def atualizar_parecer(
+    diagnostico_id: int,
+    body: ParecerUpdate,
+    db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual),
+):
+    diag = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
+    if not diag:
+        raise HTTPException(status_code=404, detail="Diagnóstico não encontrado.")
+    if not medico_atual.is_superadmin and diag.medico_id != medico_atual.id:
+        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+    diag.parecer = body.parecer
+    db.commit()
+    return {"status": "ok"}
+
+@app.post("/api/diagnosticos/exportar-pdfs")
+def exportar_pdfs(
+    req: DeleteModel,
+    db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual),
+):
+    diagnosticos = db.query(Diagnostico).filter(
+        Diagnostico.id.in_(req.ids)
+    ).all()
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.set_margins(15, 15, 15)
+
+    # ── Fontes da plataforma ─────────────────────────────────────────────
+    pdf.add_font(
+        "Syne",
+        "",
+        "fonts/Syne-Regular.ttf",
+        uni=True
+    )
+
+    pdf.add_font(
+        "Syne",
+        "B",
+        "fonts/Syne-Bold.ttf",
+        uni=True
+    )
+
+    pdf.add_font(
+        "Syne",
+        "BI",
+        "fonts/Syne-SemiBold.ttf",
+        uni=True
+    )
+
+    pdf.add_font(
+        "Syne",
+        "I",
+        "fonts/Syne-Medium.ttf",
+        uni=True
+    )
+
+    # ── Helpers ──────────────────────────────────────────────────────────
+    def section_title(text: str):
+        pdf.set_font("Syne", "BI", 12)
+        pdf.set_text_color(20, 20, 20)
+
+        pdf.cell(0, 8, text, ln=True)
+        pdf.set_draw_color(230, 230, 230)
+        pdf.line(15, pdf.get_y(), 195, pdf.get_y())
+
+        pdf.ln(4)
+
+    def label_value(label: str, value: str):
+        pdf.set_font("Syne", "I", 9)
+        pdf.set_text_color(110, 110, 110)
+        pdf.cell(45, 6, label)
+
+        pdf.set_font("Syne", "", 11)
+        pdf.set_text_color(25, 25, 25)
+        pdf.cell(0, 6, value, ln=True)
+
+    def formatar_cpf(cpf: str):
+        if not cpf:
+            return ""
+
+        digits = ''.join(filter(str.isdigit, cpf))
+
+        if len(digits) == 11:
+            return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+
+        return cpf
+
+    # ── Geração ──────────────────────────────────────────────────────────
+    for diag in diagnosticos:
+
+        if not (medico_atual.is_superadmin or diag.medico_id == medico_atual.id):
+            continue
+
+        pdf.add_page()
+
+        # ───────────────── HEADER ─────────────────
+        pdf.set_font("Syne", "B", 18)
+        pdf.set_text_color(15, 15, 15)
+
+        pdf.cell(
+            0,
+            10,
+            f"Laudo de Diagnóstico #{diag.id}",
+            ln=True,
+            align="C"
+        )
+
+        pdf.set_font("Syne", "I", 9)
+        pdf.set_text_color(120, 120, 120)
+
+        pdf.cell(
+            0,
+            6,
+            f"Emitido em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
+            ln=True,
+            align="C"
+        )
+
+        pdf.ln(10)
+
+        # ───────────────── PACIENTE ─────────────────
+        section_title("Dados do Paciente")
+
+        label_value("Paciente", diag.paciente.nome)
+
+        label_value(
+            "Idade / Sexo",
+            f"{diag.paciente.idade} anos · {'Masculino' if diag.paciente.sexo == 'M' else 'Feminino'}"
+        )
+
+        if diag.paciente.cpf:
+            label_value("CPF", formatar_cpf(diag.paciente.cpf))
+
+        pdf.ln(3)
+
+        # ───────────────── IMAGENS ─────────────────
+        section_title("Imagens Retinianas")
+
+        if diag.imagens:
+            for img in diag.imagens:
+
+                caminho = img.caminho_arquivo
+
+                if _os.path.exists(caminho):
+                    try:
+                        current_y = pdf.get_y()
+
+                        # quebra automática
+                        if current_y > 220:
+                            pdf.add_page()
+
+                        pdf.image(
+                            caminho,
+                            x=35,
+                            w=140
+                        )
+
+                        pdf.ln(78)
+
+                        pdf.set_font("Syne", "I", 9)
+                        pdf.set_text_color(90, 90, 90)
+
+                        pdf.cell(
+                            0,
+                            5,
+                            f"Olho {'Direito (OD)' if img.tipo == 'OD' else 'Esquerdo (OE)'}",
+                            ln=True,
+                            align="C"
+                        )
+
+                        pdf.ln(6)
+
+                    except Exception:
+                        pdf.set_font("Syne", "", 10)
+                        pdf.set_text_color(180, 40, 40)
+
+                        pdf.cell(
+                            0,
+                            6,
+                            f"Imagem {img.tipo} indisponível.",
+                            ln=True
+                        )
+
+                        pdf.ln(2)
+
+        else:
+            pdf.set_font("Syne", "", 10)
+            pdf.set_text_color(120, 120, 120)
+
+            pdf.cell(
+                0,
+                6,
+                "Nenhuma imagem disponível.",
+                ln=True
+            )
+
+        pdf.ln(4)
+
+        # ───────────────── RESULTADOS ─────────────────
+        section_title("Resultados da Análise")
+
+        resultados = diag.resultados
+
+        if resultados:
+
+            olhos = {}
+
+            for r in resultados:
+                if r.olho_analisado not in olhos:
+                    olhos[r.olho_analisado] = []
+
+                olhos[r.olho_analisado].append(r)
+
+            for olho, res_list in olhos.items():
+
+                nome_olho = (
+                    "Olho Direito (OD)"
+                    if olho == "OD"
+                    else "Olho Esquerdo (OE)"
+                )
+
+                pdf.set_font("Syne", "BI", 11)
+                pdf.set_text_color(30, 30, 30)
+
+                pdf.cell(0, 7, nome_olho, ln=True)
+
+                pdf.ln(1)
+
+                for r in res_list:
+
+                    # doença
+                    pdf.set_font("Syne", "", 10)
+                    pdf.set_text_color(35, 35, 35)
+
+                    pdf.cell(120, 7, r.doenca)
+
+                    # confiança
+                    confianca = f"{r.confianca}%"
+
+                    if r.confianca >= 80:
+                        pdf.set_text_color(180, 40, 40)
+                    elif r.confianca >= 60:
+                        pdf.set_text_color(200, 120, 20)
+                    else:
+                        pdf.set_text_color(30, 140, 70)
+
+                    pdf.set_font("Syne", "BI", 10)
+
+                    pdf.cell(
+                        0,
+                        7,
+                        confianca,
+                        ln=True,
+                        align="R"
+                    )
+
+                pdf.ln(4)
+
+        else:
+            pdf.set_font("Syne", "", 10)
+            pdf.set_text_color(120, 120, 120)
+
+            pdf.cell(
+                0,
+                6,
+                "Nenhum resultado encontrado.",
+                ln=True
+            )
+
+        # ───────────────── PARECER ─────────────────
+        pdf.ln(2)
+
+        section_title("Parecer do Médico Responsável")
+
+        pdf.set_fill_color(248, 248, 248)
+        pdf.set_draw_color(225, 225, 225)
+
+        parecer = diag.parecer or "—"
+
+        pdf.set_font("Syne", "", 11)
+        pdf.set_text_color(25, 25, 25)
+
+        x = pdf.get_x()
+        y = pdf.get_y()
+
+        pdf.multi_cell(
+            0,
+            7,
+            parecer,
+            border=1,
+            fill=True
+        )
+
+        pdf.ln(16)
+
+        # ───────────────── ASSINATURA ─────────────────
+        pdf.set_draw_color(170, 170, 170)
+
+        line_width = 70
+        start_x = 125
+
+        pdf.line(
+            start_x,
+            pdf.get_y(),
+            start_x + line_width,
+            pdf.get_y()
+        )
+
+        pdf.ln(3)
+
+        pdf.set_font("Syne", "I", 9)
+        pdf.set_text_color(110, 110, 110)
+
+        pdf.cell(
+            0,
+            5,
+            "Assinatura e carimbo",
+            align="R"
+        )
+
+    # ───────────────── OUTPUT ─────────────────
+    buffer = BytesIO()
+
+    pdf.output(buffer)
+
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+                f"attachment; filename=laudos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        }
+    )
