@@ -8,12 +8,13 @@ class Medico(Base):
     __tablename__ = "medicos"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
-    cpf = Column(String, unique=True, index=True)
-    crm = Column(String, unique=True, index=True)
+    cpf = Column(String, unique=True, index=True, nullable=True) # Pode ser nulo para não verificados
+    crm = Column(String, unique=True, index=True, nullable=True) # Pode ser nulo para não verificados
     email = Column(String, unique=True, index=True)
     senha_hash = Column(String)
     is_superadmin = Column(Boolean, default=False)
     solicitou_reset = Column(Boolean, default=False)
+    verificado = Column(Boolean, default=False) 
     
     diagnosticos = relationship("Diagnostico", back_populates="medico")
 

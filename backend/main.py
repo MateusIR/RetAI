@@ -142,6 +142,11 @@ class MedicoCreate(BaseModel):
     email: str
     senha: str
 
+class MedicoNaoVerificadoCreate(BaseModel):
+    nome: str
+    email: str
+    senha: str
+
 class MedicoUpdate(BaseModel):
     nome: str
     crm: str
@@ -162,18 +167,13 @@ class AdminResetSenhaSchema(BaseModel):
 
 class ParecerUpdate(BaseModel):
     parecer: str
+
 # ── Rotas de Redefinição de Senha (Local) ─────────────────────────────────────
 
 @app.post("/api/auth/solicitar-reset-local")
 def solicitar_reset_local(body: SolicitarResetLocalSchema, db: Session = Depends(get_db)):
-    """Marca o usuário com uma flag para o admin ver no painel."""
-    
-    # Remove espaços acidentais e padroniza tudo para minúsculo
     email_limpo = body.email.strip().lower()
-    
-    # Busca o médico no banco comparando o e-mail também em minúsculo
     medico = db.query(Medico).filter(func.lower(Medico.email) == email_limpo).first()
-    
     if medico:
         try:
             medico.solicitou_reset = True
@@ -181,13 +181,10 @@ def solicitar_reset_local(body: SolicitarResetLocalSchema, db: Session = Depends
         except Exception:
             db.rollback()
             pass
-
-
     return {"message": "Se o e-mail estiver cadastrado, a solicitação foi enviada ao Administrador."}
 
 @app.post("/api/auth/admin-self-reset")
 def admin_self_reset(body: AdminSelfResetSchema, db: Session = Depends(get_db)):
-    """Permite que o Superadmin redefina a própria senha cruzando dados."""
     medico = db.query(Medico).filter(
         Medico.email == body.email,
         Medico.cpf == body.cpf,
@@ -195,7 +192,6 @@ def admin_self_reset(body: AdminSelfResetSchema, db: Session = Depends(get_db)):
         Medico.is_superadmin == True
     ).first()
     
-    # Validamos o nome ignorando maiúsculas/minúsculas
     if not medico or medico.nome.lower() != body.nome.lower():
         raise HTTPException(status_code=400, detail="Dados incorretos ou usuário não é Superadmin.")
         
@@ -209,7 +205,6 @@ def admin_self_reset(body: AdminSelfResetSchema, db: Session = Depends(get_db)):
 
 @app.post("/api/medicos/{medico_id}/resetar-senha-admin")
 def resetar_senha_admin(medico_id: int, body: AdminResetSenhaSchema, db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual)):
-    """Admin redefinindo a senha de um colega."""
     if not current_user.is_superadmin:
         raise HTTPException(status_code=403, detail="Apenas superadmins podem redefinir senhas.")
         
@@ -221,7 +216,7 @@ def resetar_senha_admin(medico_id: int, body: AdminResetSenhaSchema, db: Session
         raise HTTPException(status_code=404, detail="Médico não encontrado.")
         
     medico.senha_hash = pwd_context.hash(body.nova_senha)
-    medico.solicitou_reset = False # Remove a flag de solicitação
+    medico.solicitou_reset = False 
     db.commit()
     
     return {"message": "Senha do usuário atualizada com sucesso."}
@@ -229,17 +224,12 @@ def resetar_senha_admin(medico_id: int, body: AdminResetSenhaSchema, db: Session
 # ── Rotas de Autenticação ─────────────────────────────────────────────────────
 
 @app.post("/api/medicos/registrar")
-async def registrar_medico(
-    medico: MedicoCreate,
-    db: Session = Depends(get_db),
-):
-    # 1. Validações de formato (local, sem rede)
+async def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
     if len(medico.senha) < 6:
         raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres.")
 
     validar_cpf(medico.cpf)
 
-    # 2. Unicidade no banco (local, sem rede) — antes de gastar consulta na API
     if db.query(Medico).filter(Medico.email == medico.email.strip().lower()).first():
         raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
 
@@ -249,18 +239,15 @@ async def registrar_medico(
     if db.query(Medico).filter(Medico.crm == medico.crm).first():
         raise HTTPException(status_code=409, detail="Este CRM já está cadastrado.")
 
-    # 3. Consulta externa ao CRM (rede) — só chega aqui se tudo acima passou
     crm_dados = await validar_crm(medico.crm)
     nome_cfm = crm_dados.get("nome_cfm", "")
 
-    # 4. Correspondência de nome com o CFM
     if not nome_cfm or not validar_correspondencia_nome(medico.nome, nome_cfm):
         raise HTTPException(
             status_code=422,
             detail="O nome informado não confere com o titular do CRM no Conselho."
         )
 
-    # 5. Persiste
     is_first = db.query(Medico).count() == 0
     novo_medico = Medico(
         nome=medico.nome,
@@ -269,6 +256,7 @@ async def registrar_medico(
         email=medico.email.strip().lower(),
         senha_hash=pwd_context.hash(medico.senha),
         is_superadmin=is_first,
+        verificado=True # Conta com CRM passa como verificada
     )
     db.add(novo_medico)
     db.commit()
@@ -279,6 +267,25 @@ async def registrar_medico(
         "nome_cfm": nome_cfm,
     }
 
+@app.post("/api/medicos/registrar-nao-verificado")
+async def registrar_medico_nao_verificado(medico: MedicoNaoVerificadoCreate, db: Session = Depends(get_db)):
+    if len(medico.senha) < 6:
+        raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres.")
+
+    if db.query(Medico).filter(Medico.email == medico.email.strip().lower()).first():
+        raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
+
+    novo_medico = Medico(
+        nome=medico.nome,
+        email=medico.email.strip().lower(),
+        senha_hash=pwd_context.hash(medico.senha),
+        is_superadmin=False, # Nunca pode ser superadmin
+        verificado=False,
+    )
+    db.add(novo_medico)
+    db.commit()
+
+    return {"message": "Conta não verificada criada com sucesso."}
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -296,16 +303,30 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             "nome": medico.nome,
             "email": medico.email,
             "is_superadmin": medico.is_superadmin,
+            "verificado": medico.verificado,
         },
     }
 
 @app.post("/api/auth/logout")
-def logout(token: str = Depends(oauth2_scheme)):
+def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         jti = payload.get("jti")
+        medico_id = payload.get("sub")
         if jti:
             _token_blacklist.add(jti)
+            
+        # Deletar dados caso usuário seja não verificado
+        if medico_id:
+            medico = db.query(Medico).filter(Medico.id == int(medico_id)).first()
+            if medico and not medico.verificado:
+                diagnosticos = db.query(Diagnostico).filter(Diagnostico.medico_id == medico.id).all()
+                for diag in diagnosticos:
+                    for img in diag.imagens:
+                        if os.path.exists(img.caminho_arquivo):
+                            os.remove(img.caminho_arquivo)
+                    db.delete(diag)
+                db.commit()
     except JWTError:
         pass
     return {"message": "Logout realizado com sucesso."}
@@ -318,6 +339,7 @@ def me(medico_atual: Medico = Depends(get_medico_atual)):
         "email": medico_atual.email,
         "crm": medico_atual.crm,
         "is_superadmin": medico_atual.is_superadmin,
+        "verificado": medico_atual.verificado,
     }
 
 # ── Rotas de Usuários ─────────────────────────────────────────────────────────
@@ -332,7 +354,8 @@ def listar_medicos(db: Session = Depends(get_db), current_user: Medico = Depends
             "email": m.email, 
             "crm": m.crm, 
             "is_superadmin": m.is_superadmin,
-            "solicitou_reset": m.solicitou_reset # Permite que o frontend mostre a flag visual
+            "solicitou_reset": m.solicitou_reset,
+            "verificado": m.verificado
         }
         for m in medicos
     ]
@@ -368,6 +391,9 @@ def promover_medico(medico_id: int, db: Session = Depends(get_db), current_user:
     medico = db.query(Medico).filter(Medico.id == medico_id).first()
     if not medico:
         raise HTTPException(status_code=404, detail="Médico não encontrado.")
+    if not medico.verificado:
+        raise HTTPException(status_code=400, detail="Médicos não verificados não podem ser promovidos a superadmin.")
+        
     medico.is_superadmin = True
     db.commit()
     return {"status": "ok"}
@@ -490,8 +516,9 @@ def detalhe_diagnostico(
         "modelo_versao": diag.modelo_versao,
         "imagens":       [{"tipo": img.tipo, "caminho": img.caminho_arquivo} for img in diag.imagens],
         "resultados":    [{"doenca": r.doenca, "confianca": r.confianca, "olho": r.olho_analisado} for r in diag.resultados],
-        "parecer":      diag.parecer,
+        "parecer":       diag.parecer,
     }
+
 class DeleteModel(BaseModel):
     ids: List[int]
 
@@ -511,7 +538,6 @@ def excluir_diagnosticos(req: DeleteModel, db: Session = Depends(get_db), medico
 
 # ── Rotas de Parecer ────────────────────────────────────────────────────────
 
-
 @app.put("/api/diagnosticos/{diagnostico_id}/parecer")
 def atualizar_parecer(
     diagnostico_id: int,
@@ -519,6 +545,9 @@ def atualizar_parecer(
     db: Session = Depends(get_db),
     medico_atual: Medico = Depends(get_medico_atual),
 ):
+    if not medico_atual.verificado:
+        raise HTTPException(status_code=403, detail="Apenas médicos verificados podem preencher o parecer.")
+        
     diag = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
     if not diag:
         raise HTTPException(status_code=404, detail="Diagnóstico não encontrado.")
@@ -534,6 +563,9 @@ def exportar_pdfs(
     db: Session = Depends(get_db),
     medico_atual: Medico = Depends(get_medico_atual),
 ):
+    if not medico_atual.verificado:
+        raise HTTPException(status_code=403, detail="Apenas médicos verificados podem gerar PDFs.")
+
     diagnosticos = db.query(Diagnostico).filter(
         Diagnostico.id.in_(req.ids)
     ).all()
@@ -543,310 +575,131 @@ def exportar_pdfs(
     pdf.set_margins(15, 15, 15)
 
     # ── Fontes da plataforma ─────────────────────────────────────────────
-    pdf.add_font(
-        "Syne",
-        "",
-        "fonts/Syne-Regular.ttf",
-        uni=True
-    )
-
-    pdf.add_font(
-        "Syne",
-        "B",
-        "fonts/Syne-Bold.ttf",
-        uni=True
-    )
-
-    pdf.add_font(
-        "Syne",
-        "BI",
-        "fonts/Syne-SemiBold.ttf",
-        uni=True
-    )
-
-    pdf.add_font(
-        "Syne",
-        "I",
-        "fonts/Syne-Medium.ttf",
-        uni=True
-    )
+    pdf.add_font("Syne", "", "fonts/Syne-Regular.ttf", uni=True)
+    pdf.add_font("Syne", "B", "fonts/Syne-Bold.ttf", uni=True)
+    pdf.add_font("Syne", "BI", "fonts/Syne-SemiBold.ttf", uni=True)
+    pdf.add_font("Syne", "I", "fonts/Syne-Medium.ttf", uni=True)
 
     # ── Helpers ──────────────────────────────────────────────────────────
     def section_title(text: str):
         pdf.set_font("Syne", "BI", 12)
         pdf.set_text_color(20, 20, 20)
-
         pdf.cell(0, 8, text, ln=True)
         pdf.set_draw_color(230, 230, 230)
         pdf.line(15, pdf.get_y(), 195, pdf.get_y())
-
         pdf.ln(4)
 
     def label_value(label: str, value: str):
         pdf.set_font("Syne", "I", 9)
         pdf.set_text_color(110, 110, 110)
         pdf.cell(45, 6, label)
-
         pdf.set_font("Syne", "", 11)
         pdf.set_text_color(25, 25, 25)
         pdf.cell(0, 6, value, ln=True)
 
     def formatar_cpf(cpf: str):
-        if not cpf:
-            return ""
-
+        if not cpf: return ""
         digits = ''.join(filter(str.isdigit, cpf))
-
-        if len(digits) == 11:
-            return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
-
+        if len(digits) == 11: return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
         return cpf
 
     # ── Geração ──────────────────────────────────────────────────────────
     for diag in diagnosticos:
-
-        if not (medico_atual.is_superadmin or diag.medico_id == medico_atual.id):
-            continue
-
+        if not (medico_atual.is_superadmin or diag.medico_id == medico_atual.id): continue
         pdf.add_page()
-
-        # ───────────────── HEADER ─────────────────
         pdf.set_font("Syne", "B", 18)
         pdf.set_text_color(15, 15, 15)
-
-        pdf.cell(
-            0,
-            10,
-            f"Laudo de Diagnóstico #{diag.id}",
-            ln=True,
-            align="C"
-        )
-
+        pdf.cell(0, 10, f"Laudo de Diagnóstico #{diag.id}", ln=True, align="C")
         pdf.set_font("Syne", "I", 9)
         pdf.set_text_color(120, 120, 120)
-
-        pdf.cell(
-            0,
-            6,
-            f"Emitido em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
-            ln=True,
-            align="C"
-        )
-
+        pdf.cell(0, 6, f"Emitido em {datetime.now().strftime('%d/%m/%Y às %H:%M')}", ln=True, align="C")
         pdf.ln(10)
-
-        # ───────────────── PACIENTE ─────────────────
         section_title("Dados do Paciente")
-
         label_value("Paciente", diag.paciente.nome)
-
-        label_value(
-            "Idade / Sexo",
-            f"{diag.paciente.idade} anos · {'Masculino' if diag.paciente.sexo == 'M' else 'Feminino'}"
-        )
-
-        if diag.paciente.cpf:
-            label_value("CPF", formatar_cpf(diag.paciente.cpf))
-
+        label_value("Idade / Sexo", f"{diag.paciente.idade} anos · {'Masculino' if diag.paciente.sexo == 'M' else 'Feminino'}")
+        if diag.paciente.cpf: label_value("CPF", formatar_cpf(diag.paciente.cpf))
         pdf.ln(3)
 
-        # ───────────────── IMAGENS ─────────────────
         section_title("Imagens Retinianas")
-
         if diag.imagens:
             for img in diag.imagens:
-
                 caminho = img.caminho_arquivo
-
                 if _os.path.exists(caminho):
                     try:
                         current_y = pdf.get_y()
-
-                        # quebra automática
-                        if current_y > 220:
-                            pdf.add_page()
-
-                        pdf.image(
-                            caminho,
-                            x=35,
-                            w=140
-                        )
-
+                        if current_y > 220: pdf.add_page()
+                        pdf.image(caminho, x=35, w=140)
                         pdf.ln(78)
-
                         pdf.set_font("Syne", "I", 9)
                         pdf.set_text_color(90, 90, 90)
-
-                        pdf.cell(
-                            0,
-                            5,
-                            f"Olho {'Direito (OD)' if img.tipo == 'OD' else 'Esquerdo (OE)'}",
-                            ln=True,
-                            align="C"
-                        )
-
+                        pdf.cell(0, 5, f"Olho {'Direito (OD)' if img.tipo == 'OD' else 'Esquerdo (OE)'}", ln=True, align="C")
                         pdf.ln(6)
-
                     except Exception:
                         pdf.set_font("Syne", "", 10)
                         pdf.set_text_color(180, 40, 40)
-
-                        pdf.cell(
-                            0,
-                            6,
-                            f"Imagem {img.tipo} indisponível.",
-                            ln=True
-                        )
-
+                        pdf.cell(0, 6, f"Imagem {img.tipo} indisponível.", ln=True)
                         pdf.ln(2)
-
         else:
             pdf.set_font("Syne", "", 10)
             pdf.set_text_color(120, 120, 120)
-
-            pdf.cell(
-                0,
-                6,
-                "Nenhuma imagem disponível.",
-                ln=True
-            )
-
+            pdf.cell(0, 6, "Nenhuma imagem disponível.", ln=True)
         pdf.ln(4)
 
-        # ───────────────── RESULTADOS ─────────────────
         section_title("Resultados da Análise")
-
         resultados = diag.resultados
-
         if resultados:
-
             olhos = {}
-
             for r in resultados:
-                if r.olho_analisado not in olhos:
-                    olhos[r.olho_analisado] = []
-
+                if r.olho_analisado not in olhos: olhos[r.olho_analisado] = []
                 olhos[r.olho_analisado].append(r)
-
             for olho, res_list in olhos.items():
-
-                nome_olho = (
-                    "Olho Direito (OD)"
-                    if olho == "OD"
-                    else "Olho Esquerdo (OE)"
-                )
-
+                nome_olho = "Olho Direito (OD)" if olho == "OD" else "Olho Esquerdo (OE)"
                 pdf.set_font("Syne", "BI", 11)
                 pdf.set_text_color(30, 30, 30)
-
                 pdf.cell(0, 7, nome_olho, ln=True)
-
                 pdf.ln(1)
-
                 for r in res_list:
-
-                    # doença
                     pdf.set_font("Syne", "", 10)
                     pdf.set_text_color(35, 35, 35)
-
                     pdf.cell(120, 7, r.doenca)
-
-                    # confiança
                     confianca = f"{r.confianca}%"
-
-                    if r.confianca >= 80:
-                        pdf.set_text_color(180, 40, 40)
-                    elif r.confianca >= 60:
-                        pdf.set_text_color(200, 120, 20)
-                    else:
-                        pdf.set_text_color(30, 140, 70)
-
+                    if r.confianca >= 80: pdf.set_text_color(180, 40, 40)
+                    elif r.confianca >= 60: pdf.set_text_color(200, 120, 20)
+                    else: pdf.set_text_color(30, 140, 70)
                     pdf.set_font("Syne", "BI", 10)
-
-                    pdf.cell(
-                        0,
-                        7,
-                        confianca,
-                        ln=True,
-                        align="R"
-                    )
-
+                    pdf.cell(0, 7, confianca, ln=True, align="R")
                 pdf.ln(4)
-
         else:
             pdf.set_font("Syne", "", 10)
             pdf.set_text_color(120, 120, 120)
+            pdf.cell(0, 6, "Nenhum resultado encontrado.", ln=True)
 
-            pdf.cell(
-                0,
-                6,
-                "Nenhum resultado encontrado.",
-                ln=True
-            )
-
-        # ───────────────── PARECER ─────────────────
         pdf.ln(2)
-
         section_title("Parecer do Médico Responsável")
-
         pdf.set_fill_color(248, 248, 248)
         pdf.set_draw_color(225, 225, 225)
-
         parecer = diag.parecer or "—"
-
         pdf.set_font("Syne", "", 11)
         pdf.set_text_color(25, 25, 25)
-
-        x = pdf.get_x()
-        y = pdf.get_y()
-
-        pdf.multi_cell(
-            0,
-            7,
-            parecer,
-            border=1,
-            fill=True
-        )
-
+        pdf.multi_cell(0, 7, parecer, border=1, fill=True)
         pdf.ln(16)
 
-        # ───────────────── ASSINATURA ─────────────────
         pdf.set_draw_color(170, 170, 170)
-
         line_width = 70
         start_x = 125
-
-        pdf.line(
-            start_x,
-            pdf.get_y(),
-            start_x + line_width,
-            pdf.get_y()
-        )
-
+        pdf.line(start_x, pdf.get_y(), start_x + line_width, pdf.get_y())
         pdf.ln(3)
-
         pdf.set_font("Syne", "I", 9)
         pdf.set_text_color(110, 110, 110)
+        pdf.cell(0, 5, "Assinatura e carimbo", align="R")
 
-        pdf.cell(
-            0,
-            5,
-            "Assinatura e carimbo",
-            align="R"
-        )
-
-    # ───────────────── OUTPUT ─────────────────
     buffer = BytesIO()
-
     pdf.output(buffer)
-
     buffer.seek(0)
-
     return StreamingResponse(
         buffer,
         media_type="application/pdf",
         headers={
-            "Content-Disposition":
-                f"attachment; filename=laudos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            "Content-Disposition": f"attachment; filename=laudos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         }
     )

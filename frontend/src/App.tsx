@@ -74,6 +74,27 @@ function PlatformDialog({ title, message, type, confirmLabel, cancelLabel, onCon
   )
 }
 
+// ── Ícone de verificado ───────────────────────────────────────────────────────
+function SeloVerificado({ size = "sm" }: { size?: "sm" | "xs" }) {
+  const cls = size === "xs"
+    ? "w-3.5 h-3.5"
+    : "w-4 h-4"
+  return (
+    <svg
+      className={`${cls} text-accent flex-shrink-0`}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <title>Médico Verificado</title>
+      <path
+        fillRule="evenodd"
+        d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const { token, user, login, logout, isAuthenticated } = useAuth();
@@ -252,8 +273,28 @@ export default function App() {
             </button>
           </nav>
 
-          <div className="flex items-center gap-4 relative">
-            <span className="text-xs font-mono text-slate-600 hidden sm:inline">RetAI v1.0</span>
+          <div className="flex items-center gap-3 relative">
+
+            {/* ── Nome do médico + selo ─────────────────────────────────── */}
+            {user && (
+              <div className="hidden sm:flex items-center gap-1.5 max-w-[160px]">
+                <span className="text-sm text-slate-300 font-medium truncate leading-none">
+                  {user.nome}
+                </span>
+                {user.verificado
+                  ? <SeloVerificado size="sm" />
+                  : (
+                    <span
+                      className="text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded flex-shrink-0"
+                      title="Conta não verificada"
+                    >
+                      NV
+                    </span>
+                  )
+                }
+              </div>
+            )}
+
             <button
               onClick={handleLogout}
               className="p-2 rounded bg-surface-2 border-surface-4 text-slate-400 hover:text-red-400 hover:border-red-400/30 hover:bg-red-400/10 transition-all duration-200"
@@ -261,6 +302,7 @@ export default function App() {
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
+
             <button onClick={() => setMenuOpen(!menuOpen)} className="p-1 pr-2 pl-2 rounded bg-surface-2 border-surface-4 text-slate-400 hover:text-white transition-colors">
               •••
             </button>
@@ -312,12 +354,27 @@ export default function App() {
                   ) : (
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-medium text-white">
-                          {u.nome} <span className="text-slate-400 font-mono text-xs ml-2">{u.crm}</span>
-                          {u.is_superadmin && <span className="text-[10px] bg-accent/20 text-accent-glow px-2 py-0.5 rounded ml-2 border border-accent/30">ADMIN</span>}
-                          {u.solicitou_reset && <span className="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded ml-2 border border-orange-500/30 animate-pulse">SOLICITOU RESET</span>}
+                        <p className="text-sm font-medium text-white flex items-center gap-1.5 flex-wrap">
+                          {u.nome}
+                          <span className="text-slate-400 font-mono text-xs">{u.crm}</span>
+
+                          {/* ── Selos de status ──────────────────────────── */}
+                          {u.verificado
+                            ? <SeloVerificado size="xs" />
+                            : (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                                Não Verificado
+                              </span>
+                            )
+                          }
+                          {u.is_superadmin && (
+                            <span className="text-[10px] bg-accent/20 text-accent-glow px-2 py-0.5 rounded border border-accent/30">ADMIN</span>
+                          )}
+                          {u.solicitou_reset && (
+                            <span className="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded border border-orange-500/30 animate-pulse">SOLICITOU RESET</span>
+                          )}
                         </p>
-                        <p className="text-xs text-slate-400">{u.email}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{u.email}</p>
                       </div>
                       <div className="flex gap-2 flex-wrap justify-end">
                         {user?.is_superadmin && u.solicitou_reset && (
@@ -330,10 +387,23 @@ export default function App() {
                             Editar
                           </button>
                         )}
+                        {/* Botão promover — desabilitado para não verificados */}
                         {user?.is_superadmin && !u.is_superadmin && (
-                          <button onClick={() => setUserToPromote(u.id)} className="text-xs text-emerald-400 hover:bg-emerald-400/10 px-2 py-1 rounded transition-colors">
-                            Tornar Admin
-                          </button>
+                          u.verificado ? (
+                            <button
+                              onClick={() => setUserToPromote(u.id)}
+                              className="text-xs text-emerald-400 hover:bg-emerald-400/10 px-2 py-1 rounded transition-colors"
+                            >
+                              Tornar Admin
+                            </button>
+                          ) : (
+                            <span
+                              className="text-xs text-slate-600 px-2 py-1 rounded cursor-not-allowed"
+                              title="Médicos não verificados não podem ser promovidos"
+                            >
+                              Tornar Admin
+                            </span>
+                          )
                         )}
                         {(user?.is_superadmin || u.id === user?.id) && (
                           <button onClick={() => handleActionUser(u.id, "del")} className="text-xs text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors">

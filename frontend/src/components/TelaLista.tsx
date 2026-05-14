@@ -199,10 +199,14 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
           <span className="text-sm font-medium text-slate-200">{selectedIds.length} item(s) selecionado(s)</span>
           <div className="flex gap-2 ml-auto">
             <button onClick={() => setModalDelete(true)} className="btn-ghost text-red-400 hover:bg-red-500/10 hover:border-red-500/50 py-1.5 px-4">Excluir</button>
-            <button onClick={() => setModalImprimir(true)} className="btn-primary py-1.5 px-4 flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-              Baixar PDFs
-            </button>
+            
+            {/* O botão de gerar PDFs só aparece se o usuário for verificado */}
+            {currentUser?.verificado && (
+              <button onClick={() => setModalImprimir(true)} className="btn-primary py-1.5 px-4 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                Baixar PDFs
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -308,7 +312,7 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
         </div>
       )}
 
-      {selectedId !== null && <ModalDetalhe diagnosticoId={selectedId} onClose={() => setSelectedId(null)} />}
+      {selectedId !== null && <ModalDetalhe currentUser={currentUser} diagnosticoId={selectedId} onClose={() => setSelectedId(null)} />}
     </div>
   )
 }

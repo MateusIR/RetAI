@@ -52,6 +52,7 @@ export interface Usuario {
   crm: string;
   is_superadmin: boolean;
   solicitou_reset: boolean;
+  verificado: boolean;
 }
 export interface ResultadoItem {
   doenca: string;
@@ -170,6 +171,7 @@ export async function excluirDiagnosticos(ids: number[]) {
     body: JSON.stringify({ ids }),
   });
 }
+
 export async function atualizarParecer(diagnosticoId: number, parecer: string): Promise<void> {
   await apiFetch(`${BASE}/api/diagnosticos/${diagnosticoId}/parecer`, {
     method: 'PUT',

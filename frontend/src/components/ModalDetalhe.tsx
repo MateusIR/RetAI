@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { fetchDiagnostico, atualizarParecer, DiagnosticoDetalhe } from '../api'
 import { gerarHTMLdoLaudo } from '../utils/pdfExport'
 
-interface Props { diagnosticoId: number; onClose: () => void }
+interface Props {
+  diagnosticoId: number
+  onClose: () => void
+  currentUser: any
+}
 
 // ── Modal de alerta/confirmação no padrão da plataforma ───────────────────────
 interface DialogProps {
@@ -180,12 +184,16 @@ function ImagemLightbox({
 }
 
 // ── Modal principal ───────────────────────────────────────────────────────────
-export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
+export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Props) {
   const [data, setData] = useState<DiagnosticoDetalhe | null>(null)
   const [loading, setLoading] = useState(true)
   const [mostrarImagens, setMostrarImagens] = useState(false)
   const [imagemExpandida, setImagemExpandida] = useState<{ src: string; label: string } | null>(null)
   const [parecer, setParecer] = useState('')
+
+  // Determina se o usuário atual pode preencher parecer / gerar PDF
+  const podeEditarParecer = currentUser?.verificado === true
+  const podeGerarPDF      = currentUser?.verificado === true
 
   // Carregar diagnóstico
   useEffect(() => {
@@ -197,16 +205,16 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
       .finally(() => setLoading(false))
   }, [diagnosticoId])
 
-  // Salvar parecer automaticamente
+  // Salvar parecer automaticamente (apenas se verificado)
   useEffect(() => {
-    if (!data) return
+    if (!data || !podeEditarParecer) return
 
     const timer = setTimeout(() => {
       atualizarParecer(data.id, parecer).catch(console.error)
     }, 800)
 
     return () => clearTimeout(timer)
-  }, [parecer, data])
+  }, [parecer, data, podeEditarParecer])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -223,24 +231,18 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
   // Helper para formatar CPF com máscara
   const formatarCPF = (cpf?: string) => {
     if (!cpf) return null
-
     const digits = cpf.replace(/\D/g, '')
-
     if (digits.length === 11) {
       return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
     }
-
     return cpf
   }
 
   // Gerar laudo PDF
   const gerarPDFLaudo = () => {
     if (!data) return
-
     const html = gerarHTMLdoLaudo(data, parecer)
-
     const novaJanela = window.open('', '_blank', 'width=900,height=700')
-
     if (novaJanela) {
       novaJanela.document.write(html)
       novaJanela.document.close()
@@ -270,20 +272,33 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
             </h2>
 
             <div className="flex gap-2 print:hidden">
-              <button
-                onClick={gerarPDFLaudo}
-                className="btn-ghost text-xs px-3 py-1.5 h-auto flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                  />
-                </svg>
-                PDF
-              </button>
+              {/* Botão PDF — apenas para verificados */}
+              {podeGerarPDF ? (
+                <button
+                  onClick={gerarPDFLaudo}
+                  className="btn-ghost text-xs px-3 py-1.5 h-auto flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                    />
+                  </svg>
+                  PDF
+                </button>
+              ) : (
+                <span
+                  className="text-xs px-3 py-1.5 h-auto flex items-center gap-2 text-slate-600 cursor-not-allowed"
+                  title="Apenas médicos verificados podem gerar PDF"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  PDF
+                </span>
+              )}
 
               <button
                 onClick={onClose}
@@ -454,20 +469,40 @@ export default function ModalDetalhe({ diagnosticoId, onClose }: Props) {
                   </div>
                 ) : null}
 
-                {/* Campo de Parecer */}
+                {/* ── Campo de Parecer ─────────────────────────────────────── */}
                 {data.status === 'CONCLUIDO' && (
                   <div className="pt-4 border-t border-surface-4 print:border-black">
-                    <label className="text-xs text-slate-500 mb-1 block print:text-gray-600">
+                    <label className="text-xs text-slate-500 block mb-1 print:text-gray-600">
                       Parecer do Médico Responsável
                     </label>
 
-                    <textarea
-                      className="w-full bg-surface-3 border border-surface-4 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 resize-none print:bg-white print:text-black print:border-black"
-                      rows={3}
-                      placeholder="Descreva o parecer definitivo..."
-                      value={parecer}
-                      onChange={e => setParecer(e.target.value)}
-                    />
+                    {podeEditarParecer ? (
+                      <textarea
+                        className="w-full bg-surface-3 border border-surface-4 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 resize-none print:bg-white print:text-black print:border-black"
+                        rows={3}
+                        placeholder="Descreva o parecer definitivo..."
+                        value={parecer}
+                        onChange={e => setParecer(e.target.value)}
+                      />
+                    ) : (
+                      <div className="relative group">
+                        <textarea
+                          className="w-full bg-surface-3/40 border border-surface-4/50 rounded-lg p-3 text-sm text-slate-600 placeholder-slate-700 resize-none cursor-not-allowed"
+                          rows={3}
+                          placeholder="Descreva o parecer definitivo..."
+                          disabled
+                        />
+                        {/* Tooltip ao hover */}
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <span className="bg-surface-1 border border-amber-500/40 text-amber-400 text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Apenas médicos verificados podem preencher o parecer
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
