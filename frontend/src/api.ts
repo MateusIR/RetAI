@@ -1,6 +1,4 @@
 const BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
-
-// Chave deve ser idêntica à definida em useAuth.ts
 const TOKEN_KEY = "retai_token";
 
 const getToken = (): string | null => sessionStorage.getItem(TOKEN_KEY);
@@ -10,23 +8,25 @@ const getAuthHeaders = (): Record<string, string> => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const getCurrentLang = (): string => {
+  return localStorage.getItem('lang') || 'pt-BR';
+};
+
 const forcarLogoutGlobal = () => {
-  // Limpa storage e dispara evento — useAuth escuta e finaliza a sessão
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem("retai_user");
   sessionStorage.removeItem("retai_expires_at");
   window.dispatchEvent(new Event("sessao_expirada"));
 };
 
-/**
- * Wrapper central de fetch autenticado.
- * Lança erro em qualquer resposta não-ok e dispara logout em 401.
- */
 async function apiFetch(
   input: RequestInfo,
   init: RequestInit = {},
 ): Promise<Response> {
-  const res = await fetch(input, {
+  const url = new URL(input as string, BASE);
+  url.searchParams.set('lang', getCurrentLang());
+
+  const res = await fetch(url.toString(), {
     ...init,
     headers: {
       ...getAuthHeaders(),

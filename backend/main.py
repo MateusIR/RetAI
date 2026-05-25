@@ -23,9 +23,10 @@ import os as _os
 from models import Base, Medico, Paciente, Diagnostico, Imagem, Resultado
 from ml_engine import analisar_imagem, MODEL_VERSION
 from validators import validar_cpf, validar_crm, validar_correspondencia_nome
+from i18n import t
 
 # ── Configuração JWT ──────────────────────────────────────────────────────────
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "TROQUE-ISTO-POR-UMA-CHAVE-FORTE-EM-PRODUCAO") #env
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "TROQUE-ISTO-POR-UMA-CHAVE-FORTE-EM-PRODUCAO")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -107,10 +108,11 @@ def criar_access_token(medico_id: int, email: str) -> str:
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_medico_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Medico:
+def get_medico_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db),
+                     lang: str = Query("pt_BR")) -> Medico:
     credentials_exception = HTTPException(
         status_code=401,
-        detail="Token inválido ou expirado",
+        detail=t("Token inválido ou expirado", lang),
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -125,7 +127,7 @@ def get_medico_atual(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if jti in _token_blacklist:
         raise HTTPException(
             status_code=401,
-            detail="Token revogado. Faça login novamente.",
+            detail=t("Token revogado. Faça login novamente.", lang),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -171,7 +173,8 @@ class ParecerUpdate(BaseModel):
 # ── Rotas de Redefinição de Senha (Local) ─────────────────────────────────────
 
 @app.post("/api/auth/solicitar-reset-local")
-def solicitar_reset_local(body: SolicitarResetLocalSchema, db: Session = Depends(get_db)):
+def solicitar_reset_local(body: SolicitarResetLocalSchema, db: Session = Depends(get_db),
+                          lang: str = Query("pt_BR")):
     email_limpo = body.email.strip().lower()
     medico = db.query(Medico).filter(func.lower(Medico.email) == email_limpo).first()
     if medico:
@@ -181,71 +184,76 @@ def solicitar_reset_local(body: SolicitarResetLocalSchema, db: Session = Depends
         except Exception:
             db.rollback()
             pass
-    return {"message": "Se o e-mail estiver cadastrado, a solicitação foi enviada ao Administrador."}
+    return {"message": t("Se o e-mail estiver cadastrado, a solicitação foi enviada ao Administrador.", lang)}
 
 @app.post("/api/auth/admin-self-reset")
-def admin_self_reset(body: AdminSelfResetSchema, db: Session = Depends(get_db)):
+def admin_self_reset(body: AdminSelfResetSchema, db: Session = Depends(get_db),
+                     lang: str = Query("pt_BR")):
     medico = db.query(Medico).filter(
         Medico.email == body.email,
         Medico.cpf == body.cpf,
         Medico.crm == body.crm,
         Medico.is_superadmin == True
     ).first()
-    
+
     if not medico or medico.nome.lower() != body.nome.lower():
-        raise HTTPException(status_code=400, detail="Dados incorretos ou usuário não é Superadmin.")
-        
+        raise HTTPException(status_code=400, detail=t("Dados incorretos ou usuário não é Superadmin.", lang))
+
     if len(body.nova_senha) < 6:
-        raise HTTPException(status_code=400, detail="A nova senha deve ter ao menos 6 caracteres.")
-        
+        raise HTTPException(status_code=400, detail=t("A nova senha deve ter ao menos 6 caracteres.", lang))
+
     medico.senha_hash = pwd_context.hash(body.nova_senha)
     medico.solicitou_reset = False
     db.commit()
-    return {"message": "Senha de administrador redefinida com sucesso."}
+    return {"message": t("Senha de administrador redefinida com sucesso.", lang)}
 
 @app.post("/api/medicos/{medico_id}/resetar-senha-admin")
-def resetar_senha_admin(medico_id: int, body: AdminResetSenhaSchema, db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual)):
+def resetar_senha_admin(medico_id: int, body: AdminResetSenhaSchema,
+                        db: Session = Depends(get_db),
+                        current_user: Medico = Depends(get_medico_atual),
+                        lang: str = Query("pt_BR")):
     if not current_user.is_superadmin:
-        raise HTTPException(status_code=403, detail="Apenas superadmins podem redefinir senhas.")
-        
+        raise HTTPException(status_code=403, detail=t("Apenas superadmins podem redefinir senhas.", lang))
+
     if len(body.nova_senha) < 6:
-        raise HTTPException(status_code=400, detail="Senha deve ter ao menos 6 caracteres.")
-        
+        raise HTTPException(status_code=400, detail=t("Senha deve ter ao menos 6 caracteres.", lang))
+
     medico = db.query(Medico).filter(Medico.id == medico_id).first()
     if not medico:
-        raise HTTPException(status_code=404, detail="Médico não encontrado.")
-        
+        raise HTTPException(status_code=404, detail=t("Médico não encontrado.", lang))
+
     medico.senha_hash = pwd_context.hash(body.nova_senha)
-    medico.solicitou_reset = False 
+    medico.solicitou_reset = False
     db.commit()
-    
-    return {"message": "Senha do usuário atualizada com sucesso."}
+
+    return {"message": t("Senha do usuário atualizada com sucesso.", lang)}
 
 # ── Rotas de Autenticação ─────────────────────────────────────────────────────
 
 @app.post("/api/medicos/registrar")
-async def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
+async def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db),
+                          lang: str = Query("pt_BR")):
     if len(medico.senha) < 6:
-        raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres.")
+        raise HTTPException(status_code=422, detail=t("A senha deve ter pelo menos 6 caracteres.", lang))
 
-    validar_cpf(medico.cpf)
+    validar_cpf(medico.cpf, lang)
 
     if db.query(Medico).filter(Medico.email == medico.email.strip().lower()).first():
-        raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
+        raise HTTPException(status_code=409, detail=t("Este e-mail já está cadastrado.", lang))
 
     if db.query(Medico).filter(Medico.cpf == medico.cpf).first():
-        raise HTTPException(status_code=409, detail="Este CPF já está cadastrado.")
+        raise HTTPException(status_code=409, detail=t("Este CPF já está cadastrado.", lang))
 
     if db.query(Medico).filter(Medico.crm == medico.crm).first():
-        raise HTTPException(status_code=409, detail="Este CRM já está cadastrado.")
+        raise HTTPException(status_code=409, detail=t("Este CRM já está cadastrado.", lang))
 
-    crm_dados = await validar_crm(medico.crm)
+    crm_dados = await validar_crm(medico.crm, lang)
     nome_cfm = crm_dados.get("nome_cfm", "")
 
     if not nome_cfm or not validar_correspondencia_nome(medico.nome, nome_cfm):
         raise HTTPException(
             status_code=422,
-            detail="O nome informado não confere com o titular do CRM no Conselho."
+            detail=t("O nome informado não confere com o titular do CRM no Conselho.", lang)
         )
 
     is_first = db.query(Medico).count() == 0
@@ -256,43 +264,47 @@ async def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
         email=medico.email.strip().lower(),
         senha_hash=pwd_context.hash(medico.senha),
         is_superadmin=is_first,
-        verificado=True # Conta com CRM passa como verificada
+        verificado=True
     )
     db.add(novo_medico)
     db.commit()
 
     return {
-        "message": "Médico registrado com sucesso.",
+        "message": t("Médico registrado com sucesso.", lang),
         "crm_validado": f"{crm_dados['numero']}/{crm_dados['uf']}",
         "nome_cfm": nome_cfm,
     }
 
 @app.post("/api/medicos/registrar-nao-verificado")
-async def registrar_medico_nao_verificado(medico: MedicoNaoVerificadoCreate, db: Session = Depends(get_db)):
+async def registrar_medico_nao_verificado(medico: MedicoNaoVerificadoCreate,
+                                         db: Session = Depends(get_db),
+                                         lang: str = Query("pt_BR")):
     if len(medico.senha) < 6:
-        raise HTTPException(status_code=422, detail="A senha deve ter pelo menos 6 caracteres.")
+        raise HTTPException(status_code=422, detail=t("A senha deve ter pelo menos 6 caracteres.", lang))
 
     if db.query(Medico).filter(Medico.email == medico.email.strip().lower()).first():
-        raise HTTPException(status_code=409, detail="Este e-mail já está cadastrado.")
+        raise HTTPException(status_code=409, detail=t("Este e-mail já está cadastrado.", lang))
 
     novo_medico = Medico(
         nome=medico.nome,
         email=medico.email.strip().lower(),
         senha_hash=pwd_context.hash(medico.senha),
-        is_superadmin=False, # Nunca pode ser superadmin
+        is_superadmin=False,
         verificado=False,
     )
     db.add(novo_medico)
     db.commit()
 
-    return {"message": "Conta não verificada criada com sucesso."}
+    return {"message": t("Conta não verificada criada com sucesso.", lang)}
 
 @app.post("/api/auth/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(),
+          db: Session = Depends(get_db),
+          lang: str = Query("pt_BR")):
     medico = db.query(Medico).filter(Medico.email == form_data.username).first()
     senha_ok = medico and pwd_context.verify(form_data.password, medico.senha_hash)
     if not senha_ok:
-        raise HTTPException(status_code=400, detail="E-mail ou senha incorretos.")
+        raise HTTPException(status_code=400, detail=t("E-mail ou senha incorretos.", lang))
     token = criar_access_token(medico.id, medico.email)
     return {
         "access_token": token,
@@ -308,15 +320,15 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     }
 
 @app.post("/api/auth/logout")
-def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db),
+           lang: str = Query("pt_BR")):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         jti = payload.get("jti")
         medico_id = payload.get("sub")
         if jti:
             _token_blacklist.add(jti)
-            
-        # Deletar dados caso usuário seja não verificado
+
         if medico_id:
             medico = db.query(Medico).filter(Medico.id == int(medico_id)).first()
             if medico and not medico.verificado:
@@ -329,7 +341,7 @@ def logout(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
                 db.commit()
     except JWTError:
         pass
-    return {"message": "Logout realizado com sucesso."}
+    return {"message": t("Logout realizado com sucesso.", lang)}
 
 @app.get("/api/auth/me")
 def me(medico_atual: Medico = Depends(get_medico_atual)):
@@ -345,14 +357,15 @@ def me(medico_atual: Medico = Depends(get_medico_atual)):
 # ── Rotas de Usuários ─────────────────────────────────────────────────────────
 
 @app.get("/api/medicos/")
-def listar_medicos(db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual)):
+def listar_medicos(db: Session = Depends(get_db),
+                   current_user: Medico = Depends(get_medico_atual)):
     medicos = db.query(Medico).all() if current_user.is_superadmin else [current_user]
     return [
         {
-            "id": m.id, 
-            "nome": m.nome, 
-            "email": m.email, 
-            "crm": m.crm, 
+            "id": m.id,
+            "nome": m.nome,
+            "email": m.email,
+            "crm": m.crm,
             "is_superadmin": m.is_superadmin,
             "solicitou_reset": m.solicitou_reset,
             "verificado": m.verificado
@@ -361,12 +374,15 @@ def listar_medicos(db: Session = Depends(get_db), current_user: Medico = Depends
     ]
 
 @app.put("/api/medicos/{medico_id}")
-def editar_medico(medico_id: int, req: MedicoUpdate, db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual)):
+def editar_medico(medico_id: int, req: MedicoUpdate,
+                 db: Session = Depends(get_db),
+                 current_user: Medico = Depends(get_medico_atual),
+                 lang: str = Query("pt_BR")):
     if not current_user.is_superadmin and current_user.id != medico_id:
-        raise HTTPException(status_code=403, detail="Não autorizado.")
+        raise HTTPException(status_code=403, detail=t("Não autorizado.", lang))
     medico = db.query(Medico).filter(Medico.id == medico_id).first()
     if not medico:
-        raise HTTPException(status_code=404, detail="Médico não encontrado.")
+        raise HTTPException(status_code=404, detail=t("Médico não encontrado.", lang))
     medico.nome = req.nome
     medico.crm = req.crm
     medico.email = req.email
@@ -374,26 +390,29 @@ def editar_medico(medico_id: int, req: MedicoUpdate, db: Session = Depends(get_d
     return {"status": "ok"}
 
 @app.delete("/api/medicos/{medico_id}")
-def deletar_medico(medico_id: int, db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual)):
+def deletar_medico(medico_id: int, db: Session = Depends(get_db),
+                  current_user: Medico = Depends(get_medico_atual),
+                  lang: str = Query("pt_BR")):
     if not current_user.is_superadmin and current_user.id != medico_id:
-        raise HTTPException(status_code=403, detail="Não autorizado.")
+        raise HTTPException(status_code=403, detail=t("Não autorizado.", lang))
     medico = db.query(Medico).filter(Medico.id == medico_id).first()
     if not medico:
-        raise HTTPException(status_code=404, detail="Médico não encontrado.")
+        raise HTTPException(status_code=404, detail=t("Médico não encontrado.", lang))
     db.delete(medico)
     db.commit()
     return {"status": "ok"}
 
 @app.post("/api/medicos/{medico_id}/promover")
-def promover_medico(medico_id: int, db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual)):
+def promover_medico(medico_id: int, db: Session = Depends(get_db),
+                   current_user: Medico = Depends(get_medico_atual),
+                   lang: str = Query("pt_BR")):
     if not current_user.is_superadmin:
-        raise HTTPException(status_code=403, detail="Apenas superadmins podem promover.")
+        raise HTTPException(status_code=403, detail=t("Apenas superadmins podem redefinir senhas.", lang))
     medico = db.query(Medico).filter(Medico.id == medico_id).first()
     if not medico:
-        raise HTTPException(status_code=404, detail="Médico não encontrado.")
+        raise HTTPException(status_code=404, detail=t("Médico não encontrado.", lang))
     if not medico.verificado:
-        raise HTTPException(status_code=400, detail="Médicos não verificados não podem ser promovidos a superadmin.")
-        
+        raise HTTPException(status_code=400, detail=t("Médicos não verificados não podem ser promovidos a superadmin.", lang))
     medico.is_superadmin = True
     db.commit()
     return {"status": "ok"}
@@ -406,14 +425,16 @@ async def criar_diagnostico(
     nome: str = Form(...), idade: int = Form(...), sexo: str = Form(...),
     cpf: Optional[str] = Form(None), tipo_od: bool = Form(False), tipo_oe: bool = Form(False),
     file_od: Optional[UploadFile] = File(None), file_oe: Optional[UploadFile] = File(None),
-    db: Session = Depends(get_db), medico_atual: Medico = Depends(get_medico_atual),
+    db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual),
+    lang: str = Query("pt_BR"),
 ):
     if not tipo_od and not tipo_oe:
-        raise HTTPException(status_code=400, detail="Selecione ao menos um olho.")
+        raise HTTPException(status_code=400, detail=t("Selecione ao menos um olho.", lang))
     if tipo_od and not file_od:
-        raise HTTPException(status_code=400, detail="Arquivo OD não enviado.")
+        raise HTTPException(status_code=400, detail=t("Arquivo OD não enviado.", lang))
     if tipo_oe and not file_oe:
-        raise HTTPException(status_code=400, detail="Arquivo OE não enviado.")
+        raise HTTPException(status_code=400, detail=t("Arquivo OE não enviado.", lang))
 
     paciente = Paciente(nome=nome.strip(), cpf=cpf, idade=idade, sexo=sexo)
     db.add(paciente)
@@ -445,14 +466,15 @@ async def criar_diagnostico(
 
     db.commit()
     background_tasks.add_task(processar_diagnostico_worker, diagnostico.id)
-    return {"message": "Processando", "diagnostico_id": diagnostico.id, "paciente_id": paciente.id}
+    return {"message": t("Processando", lang), "diagnostico_id": diagnostico.id, "paciente_id": paciente.id}
 
 @app.get("/api/diagnosticos/")
 def listar_diagnosticos(
     nome_filtro: Optional[str] = None, cpf_filtro: Optional[str] = None,
     doencas: List[str] = Query(default=[]), doencas_logic: str = "OR",
     apenas_meus: bool = True, page: int = 1,
-    db: Session = Depends(get_db), medico_atual: Medico = Depends(get_medico_atual),
+    db: Session = Depends(get_db),
+    medico_atual: Medico = Depends(get_medico_atual),
 ):
     query = db.query(Diagnostico).join(Paciente)
 
@@ -498,13 +520,14 @@ def listar_diagnosticos(
 def detalhe_diagnostico(
     diagnostico_id: int,
     db: Session = Depends(get_db),
-    medico_atual: Medico = Depends(get_medico_atual)
+    medico_atual: Medico = Depends(get_medico_atual),
+    lang: str = Query("pt_BR")
 ):
     diag = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
     if not diag:
-        raise HTTPException(status_code=404, detail="Diagnóstico não encontrado.")
+        raise HTTPException(status_code=404, detail=t("Diagnóstico não encontrado.", lang))
     if not medico_atual.is_superadmin and diag.medico_id != medico_atual.id:
-        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+        raise HTTPException(status_code=403, detail=t("Acesso não autorizado.", lang))
     return {
         "id":            diag.id,
         "paciente":      diag.paciente.nome,
@@ -523,7 +546,8 @@ class DeleteModel(BaseModel):
     ids: List[int]
 
 @app.post("/api/diagnosticos/deletar-massa")
-def excluir_diagnosticos(req: DeleteModel, db: Session = Depends(get_db), medico_atual: Medico = Depends(get_medico_atual)):
+def excluir_diagnosticos(req: DeleteModel, db: Session = Depends(get_db),
+                        medico_atual: Medico = Depends(get_medico_atual)):
     diagnosticos = db.query(Diagnostico).filter(Diagnostico.id.in_(req.ids)).all()
     count = 0
     for diag in diagnosticos:
@@ -544,15 +568,16 @@ def atualizar_parecer(
     body: ParecerUpdate,
     db: Session = Depends(get_db),
     medico_atual: Medico = Depends(get_medico_atual),
+    lang: str = Query("pt_BR"),
 ):
     if not medico_atual.verificado:
-        raise HTTPException(status_code=403, detail="Apenas médicos verificados podem preencher o parecer.")
-        
+        raise HTTPException(status_code=403, detail=t("Apenas médicos verificados podem preencher o parecer.", lang))
+
     diag = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
     if not diag:
-        raise HTTPException(status_code=404, detail="Diagnóstico não encontrado.")
+        raise HTTPException(status_code=404, detail=t("Diagnóstico não encontrado.", lang))
     if not medico_atual.is_superadmin and diag.medico_id != medico_atual.id:
-        raise HTTPException(status_code=403, detail="Acesso não autorizado.")
+        raise HTTPException(status_code=403, detail=t("Acesso não autorizado.", lang))
     diag.parecer = body.parecer
     db.commit()
     return {"status": "ok"}
@@ -562,9 +587,10 @@ def exportar_pdfs(
     req: DeleteModel,
     db: Session = Depends(get_db),
     medico_atual: Medico = Depends(get_medico_atual),
+    lang: str = Query("pt_BR"),
 ):
     if not medico_atual.verificado:
-        raise HTTPException(status_code=403, detail="Apenas médicos verificados podem gerar PDFs.")
+        raise HTTPException(status_code=403, detail=t("Apenas médicos verificados podem gerar PDFs.", lang))
 
     diagnosticos = db.query(Diagnostico).filter(
         Diagnostico.id.in_(req.ids)
@@ -574,13 +600,11 @@ def exportar_pdfs(
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.set_margins(15, 15, 15)
 
-    # ── Fontes da plataforma ─────────────────────────────────────────────
     pdf.add_font("Syne", "", "fonts/Syne-Regular.ttf", uni=True)
     pdf.add_font("Syne", "B", "fonts/Syne-Bold.ttf", uni=True)
     pdf.add_font("Syne", "BI", "fonts/Syne-SemiBold.ttf", uni=True)
     pdf.add_font("Syne", "I", "fonts/Syne-Medium.ttf", uni=True)
 
-    # ── Helpers ──────────────────────────────────────────────────────────
     def section_title(text: str):
         pdf.set_font("Syne", "BI", 12)
         pdf.set_text_color(20, 20, 20)
@@ -603,24 +627,33 @@ def exportar_pdfs(
         if len(digits) == 11: return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
         return cpf
 
-    # ── Geração ──────────────────────────────────────────────────────────
     for diag in diagnosticos:
         if not (medico_atual.is_superadmin or diag.medico_id == medico_atual.id): continue
         pdf.add_page()
+
+        # Título
         pdf.set_font("Syne", "B", 18)
         pdf.set_text_color(15, 15, 15)
-        pdf.cell(0, 10, f"Laudo de Diagnóstico #{diag.id}", ln=True, align="C")
+        pdf.cell(0, 10, t("Laudo de Diagnóstico #{}", lang).format(diag.id), ln=True, align="C")
+
+        # Data
         pdf.set_font("Syne", "I", 9)
         pdf.set_text_color(120, 120, 120)
-        pdf.cell(0, 6, f"Emitido em {datetime.now().strftime('%d/%m/%Y às %H:%M')}", ln=True, align="C")
+        data_emissao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        pdf.cell(0, 6, t("Emitido em {}", lang).format(data_emissao), ln=True, align="C")
         pdf.ln(10)
-        section_title("Dados do Paciente")
-        label_value("Paciente", diag.paciente.nome)
-        label_value("Idade / Sexo", f"{diag.paciente.idade} anos · {'Masculino' if diag.paciente.sexo == 'M' else 'Feminino'}")
-        if diag.paciente.cpf: label_value("CPF", formatar_cpf(diag.paciente.cpf))
+
+        # Dados do Paciente
+        section_title(t("Dados do Paciente", lang))
+        label_value(t("Paciente", lang), diag.paciente.nome)
+        idade_sexo = f"{diag.paciente.idade} {t('anos', lang)} · {t('Masculino', lang) if diag.paciente.sexo == 'M' else t('Feminino', lang)}"
+        label_value(t("Idade / Sexo", lang), idade_sexo)
+        if diag.paciente.cpf:
+            label_value(t("CPF", lang), formatar_cpf(diag.paciente.cpf))
         pdf.ln(3)
 
-        section_title("Imagens Retinianas")
+        # Imagens
+        section_title(t("Imagens Retinianas", lang))
         if diag.imagens:
             for img in diag.imagens:
                 caminho = img.caminho_arquivo
@@ -632,28 +665,31 @@ def exportar_pdfs(
                         pdf.ln(78)
                         pdf.set_font("Syne", "I", 9)
                         pdf.set_text_color(90, 90, 90)
-                        pdf.cell(0, 5, f"Olho {'Direito (OD)' if img.tipo == 'OD' else 'Esquerdo (OE)'}", ln=True, align="C")
+                        olho_label = t("Olho Direito (OD)", lang) if img.tipo == "OD" else t("Olho Esquerdo (OE)", lang)
+                        pdf.cell(0, 5, olho_label, ln=True, align="C")
                         pdf.ln(6)
                     except Exception:
                         pdf.set_font("Syne", "", 10)
                         pdf.set_text_color(180, 40, 40)
-                        pdf.cell(0, 6, f"Imagem {img.tipo} indisponível.", ln=True)
+                        pdf.cell(0, 6, t("Imagem {} indisponível.", lang).format(img.tipo), ln=True)
                         pdf.ln(2)
         else:
             pdf.set_font("Syne", "", 10)
             pdf.set_text_color(120, 120, 120)
-            pdf.cell(0, 6, "Nenhuma imagem disponível.", ln=True)
+            pdf.cell(0, 6, t("Nenhuma imagem disponível.", lang), ln=True)
         pdf.ln(4)
 
-        section_title("Resultados da Análise")
+        # Resultados
+        section_title(t("Resultados da Análise", lang))
         resultados = diag.resultados
         if resultados:
             olhos = {}
             for r in resultados:
-                if r.olho_analisado not in olhos: olhos[r.olho_analisado] = []
+                if r.olho_analisado not in olhos:
+                    olhos[r.olho_analisado] = []
                 olhos[r.olho_analisado].append(r)
             for olho, res_list in olhos.items():
-                nome_olho = "Olho Direito (OD)" if olho == "OD" else "Olho Esquerdo (OE)"
+                nome_olho = t("Olho Direito (OD)", lang) if olho == "OD" else t("Olho Esquerdo (OE)", lang)
                 pdf.set_font("Syne", "BI", 11)
                 pdf.set_text_color(30, 30, 30)
                 pdf.cell(0, 7, nome_olho, ln=True)
@@ -661,7 +697,9 @@ def exportar_pdfs(
                 for r in res_list:
                     pdf.set_font("Syne", "", 10)
                     pdf.set_text_color(35, 35, 35)
-                    pdf.cell(120, 7, r.doenca)
+                    # Traduz nome da doença
+                    doenca_traduzida = t(r.doenca, lang)
+                    pdf.cell(120, 7, doenca_traduzida)
                     confianca = f"{r.confianca}%"
                     if r.confianca >= 80: pdf.set_text_color(180, 40, 40)
                     elif r.confianca >= 60: pdf.set_text_color(200, 120, 20)
@@ -672,13 +710,14 @@ def exportar_pdfs(
         else:
             pdf.set_font("Syne", "", 10)
             pdf.set_text_color(120, 120, 120)
-            pdf.cell(0, 6, "Nenhum resultado encontrado.", ln=True)
+            pdf.cell(0, 6, t("Nenhum resultado encontrado.", lang), ln=True)
 
         pdf.ln(2)
-        section_title("Parecer do Médico Responsável")
+        # Parecer
+        section_title(t("Parecer do Médico Responsável", lang))
         pdf.set_fill_color(248, 248, 248)
         pdf.set_draw_color(225, 225, 225)
-        parecer = diag.parecer or "—"
+        parecer = diag.parecer or t("—", lang)
         pdf.set_font("Syne", "", 11)
         pdf.set_text_color(25, 25, 25)
         pdf.multi_cell(0, 7, parecer, border=1, fill=True)
@@ -691,7 +730,7 @@ def exportar_pdfs(
         pdf.ln(3)
         pdf.set_font("Syne", "I", 9)
         pdf.set_text_color(110, 110, 110)
-        pdf.cell(0, 5, "Assinatura e carimbo", align="R")
+        pdf.cell(0, 5, t("Assinatura e carimbo", lang), align="R")
 
     buffer = BytesIO()
     pdf.output(buffer)

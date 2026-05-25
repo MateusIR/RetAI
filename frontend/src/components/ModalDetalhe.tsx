@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchDiagnostico, atualizarParecer, DiagnosticoDetalhe } from '../api'
 import { gerarHTMLdoLaudo } from '../utils/pdfExport'
 
@@ -8,7 +9,6 @@ interface Props {
   currentUser: any
 }
 
-// ── Modal de alerta/confirmação no padrão da plataforma ───────────────────────
 interface DialogProps {
   title: string
   message: string
@@ -65,7 +65,6 @@ function PlatformDialog({ title, message, type = 'info', confirmLabel = 'Ok', ca
   )
 }
 
-// ── Hook utilitário para usar o diálogo da plataforma ─────────────────────────
 export function usePlatformDialog() {
   const [dialog, setDialog] = useState<(DialogProps & { resolve: (v: boolean) => void }) | null>(null)
 
@@ -117,8 +116,8 @@ export function usePlatformDialog() {
   return { showAlert, showConfirm, DialogRenderer }
 }
 
-// ── Componentes internos ──────────────────────────────────────────────────────
 function BarraConfianca({ valor }: { valor: number }) {
+  const { t } = useTranslation()
   const cor = valor >= 80 ? 'bg-red-500' : valor >= 60 ? 'bg-amber-500' : 'bg-emerald-500'
 
   return (
@@ -129,7 +128,7 @@ function BarraConfianca({ valor }: { valor: number }) {
           style={{ width: `${valor}%` }}
         />
       </div>
-      <span className="font-mono text-xs text-slate-300 w-12 text-right">{valor}%</span>
+      <span className="font-mono text-xs text-slate-300 w-12 text-right">{t('diagnosis.confidenceBar', { valor })}</span>
     </div>
   )
 }
@@ -177,25 +176,23 @@ function ImagemLightbox({
       </div>
 
       <p className="mt-4 text-xs text-slate-600">
-        Clique fora ou pressione Esc para fechar
+        {useTranslation().t('app.clickOrEsc')}
       </p>
     </div>
   )
 }
 
-// ── Modal principal ───────────────────────────────────────────────────────────
 export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Props) {
+  const { t } = useTranslation()
   const [data, setData] = useState<DiagnosticoDetalhe | null>(null)
   const [loading, setLoading] = useState(true)
   const [mostrarImagens, setMostrarImagens] = useState(false)
   const [imagemExpandida, setImagemExpandida] = useState<{ src: string; label: string } | null>(null)
   const [parecer, setParecer] = useState('')
 
-  // Determina se o usuário atual pode preencher parecer / gerar PDF
   const podeEditarParecer = currentUser?.verificado === true
   const podeGerarPDF      = currentUser?.verificado === true
 
-  // Carregar diagnóstico
   useEffect(() => {
     fetchDiagnostico(diagnosticoId)
       .then((d) => {
@@ -205,7 +202,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
       .finally(() => setLoading(false))
   }, [diagnosticoId])
 
-  // Salvar parecer automaticamente (apenas se verificado)
   useEffect(() => {
     if (!data || !podeEditarParecer) return
 
@@ -228,7 +224,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
     return acc
   }, {})
 
-  // Helper para formatar CPF com máscara
   const formatarCPF = (cpf?: string) => {
     if (!cpf) return null
     const digits = cpf.replace(/\D/g, '')
@@ -238,7 +233,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
     return cpf
   }
 
-  // Gerar laudo PDF
   const gerarPDFLaudo = () => {
     if (!data) return
     const html = gerarHTMLdoLaudo(data, parecer)
@@ -268,11 +262,10 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
           {/* Cabeçalho */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-surface-4 print:border-b-black">
             <h2 className="font-display text-lg font-semibold text-white print:text-black">
-              Resultado do Diagnóstico
+              {t('app.diagnosisDetail')}
             </h2>
 
             <div className="flex gap-2 print:hidden">
-              {/* Botão PDF — apenas para verificados */}
               {podeGerarPDF ? (
                 <button
                   onClick={gerarPDFLaudo}
@@ -286,17 +279,17 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                       d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                     />
                   </svg>
-                  PDF
+                  {t('app.printButton')}
                 </button>
               ) : (
                 <span
                   className="text-xs px-3 py-1.5 h-auto flex items-center gap-2 text-slate-600 cursor-not-allowed"
-                  title="Apenas médicos verificados podem gerar PDF"
+                  title={t('app.verifiedOnlyPDF')}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
-                  PDF
+                  {t('app.printButton')}
                 </span>
               )}
 
@@ -326,26 +319,23 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
             ) : data ? (
               <div className="space-y-5">
 
-                {/* Grid de info do paciente */}
                 <div className="grid grid-cols-3 gap-3">
-
                   <div className="bg-surface-3 rounded-lg p-3 print:bg-gray-100 print:text-black">
-                    <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">Paciente</p>
+                    <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">{t('app.patient')}</p>
                     <p className="text-sm font-medium text-slate-200 print:text-black">
                       {data.paciente}
                     </p>
                   </div>
 
                   <div className="bg-surface-3 rounded-lg p-3 print:bg-gray-100 print:text-black">
-                    <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">Idade / Sexo</p>
+                    <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">{t('app.ageSex')}</p>
                     <p className="text-sm font-medium text-slate-200 print:text-black">
-                      {data.idade} · {data.sexo === 'M' ? 'Masc.' : 'Fem.'}
+                      {data.idade} · {data.sexo === 'M' ? t('app.male') : t('app.female')}
                     </p>
                   </div>
 
                   <div className="bg-surface-3 rounded-lg p-3 print:bg-gray-100 print:text-black">
-                    <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">Status</p>
-
+                    <p className="text-xs text-slate-500 mb-0.5 print:text-gray-600">{t('app.status')}</p>
                     <p className={`text-sm font-medium ${
                       data.status === 'CONCLUIDO'
                         ? 'text-emerald-400 print:text-emerald-700'
@@ -354,15 +344,14 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                         : 'text-red-400 print:text-red-700'
                     }`}>
                       {data.status === 'CONCLUIDO'
-                        ? 'Concluído'
+                        ? t('app.concluded')
                         : data.status === 'PROCESSANDO'
-                        ? 'Processando...'
-                        : 'Erro'}
+                        ? t('app.processing')
+                        : t('app.error')}
                     </p>
                   </div>
                 </div>
 
-                {/* Toggle de imagens */}
                 {data.status === 'CONCLUIDO' && data.imagens && data.imagens.length > 0 && (
                   <div className="flex items-center gap-2 mb-2 print:hidden">
                     <input
@@ -372,22 +361,20 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                       checked={mostrarImagens}
                       onChange={e => setMostrarImagens(e.target.checked)}
                     />
-
                     <label
                       htmlFor="toggle-imagens"
                       className="text-sm font-medium text-slate-300 cursor-pointer select-none"
                     >
-                      Exibir imagens capturadas do olho
+                      {t('app.toggleImages')}
                     </label>
                   </div>
                 )}
 
-                {/* Imagens */}
                 {(mostrarImagens || document.documentElement.classList.contains('printing')) && data.imagens && (
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     {data.imagens.map((img, i) => {
                       const src = `http://localhost:8000/imagens_salvas/${img.caminho.split(/[/\\]/).pop()}`
-                      const label = `Olho ${img.tipo === 'OD' ? 'Direito (OD)' : 'Esquerdo (OE)'}`
+                      const label = img.tipo === 'OD' ? t('app.od') : t('app.oe')
 
                       return (
                         <div
@@ -400,13 +387,11 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                             alt={label}
                             className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105"
                           />
-
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center print:hidden">
                             <svg className="w-7 h-7 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16zM11 8v6M8 11h6" />
                             </svg>
                           </div>
-
                           <div className="bg-surface-3 p-2 text-center text-xs font-semibold text-slate-300 print:bg-gray-100 print:text-black">
                             {label}
                           </div>
@@ -416,7 +401,6 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                   </div>
                 )}
 
-                {/* Resultados por olho */}
                 {data.status === 'CONCLUIDO' && gruposPorOlho && Object.keys(gruposPorOlho).length > 0 ? (
                   Object.entries(gruposPorOlho).map(([olho, resultados]) => (
                     <div key={olho}>
@@ -427,12 +411,10 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                             <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                           </svg>
                         </div>
-
                         <h3 className="text-sm font-semibold text-slate-200 print:text-black">
-                          {olho === 'OD' ? 'Olho Direito (OD)' : 'Olho Esquerdo (OE)'}
+                          {olho === 'OD' ? t('app.od') : t('app.oe')}
                         </h3>
                       </div>
-
                       <div className="space-y-3 pl-8">
                         {resultados.map((r, i) => (
                           <div key={i}>
@@ -441,13 +423,11 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                                 {r.doenca}
                               </span>
                             </div>
-
                             <div className="print:hidden">
                               <BarraConfianca valor={r.confianca} />
                             </div>
-
                             <div className="hidden print:block text-sm font-bold">
-                              Confiança: {r.confianca}%
+                              {t('diagnosis.confidenceBar', { valor: r.confianca })}
                             </div>
                           </div>
                         ))}
@@ -460,27 +440,24 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-
-                    Análise em andamento. Feche e acompanhe na lista.
+                    {t('diagnosis.analysisInProgress')}
                   </div>
                 ) : data.status === 'ERRO' ? (
                   <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-4 print:hidden">
-                    Ocorreu um erro durante o processamento deste diagnóstico.
+                    {t('diagnosis.errorOccurred')}
                   </div>
                 ) : null}
 
-                {/* ── Campo de Parecer ─────────────────────────────────────── */}
                 {data.status === 'CONCLUIDO' && (
                   <div className="pt-4 border-t border-surface-4 print:border-black">
                     <label className="text-xs text-slate-500 block mb-1 print:text-gray-600">
-                      Parecer do Médico Responsável
+                      {t('app.report')}
                     </label>
-
                     {podeEditarParecer ? (
                       <textarea
                         className="w-full bg-surface-3 border border-surface-4 rounded-lg p-3 text-sm text-slate-200 placeholder-slate-600 resize-none print:bg-white print:text-black print:border-black"
                         rows={3}
-                        placeholder="Descreva o parecer definitivo..."
+                        placeholder={t('app.reportPlaceholder')}
                         value={parecer}
                         onChange={e => setParecer(e.target.value)}
                       />
@@ -489,16 +466,15 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                         <textarea
                           className="w-full bg-surface-3/40 border border-surface-4/50 rounded-lg p-3 text-sm text-slate-600 placeholder-slate-700 resize-none cursor-not-allowed"
                           rows={3}
-                          placeholder="Descreva o parecer definitivo..."
+                          placeholder={t('app.reportPlaceholder')}
                           disabled
                         />
-                        {/* Tooltip ao hover */}
                         <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           <span className="bg-surface-1 border border-amber-500/40 text-amber-400 text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5">
                             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                             </svg>
-                            Apenas médicos verificados podem preencher o parecer
+                            {t('app.reportTooltip')}
                           </span>
                         </div>
                       </div>
@@ -506,24 +482,21 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                   </div>
                 )}
 
-                {/* Rodapé técnico */}
                 <div className="pt-3 border-t border-surface-4 flex justify-between items-end text-xs text-slate-500 font-mono print:border-black print:text-gray-600 mt-6">
                   <div className="flex flex-col gap-1">
-                    <span>Modelo: {data.modelo_versao}</span>
+                    <span>{t('app.model')}: {data.modelo_versao}</span>
                     {data.cpf && <span>CPF: {formatarCPF(data.cpf)}</span>}
                   </div>
-
-                  <span>ID do Diagnóstico: #{data.id}</span>
+                  <span>{t('app.idDiagnosis')}: #{data.id}</span>
                 </div>
 
               </div>
             ) : null}
           </div>
 
-          {/* Rodapé */}
           <div className="px-6 py-4 border-t border-surface-4 print:hidden">
             <button onClick={onClose} className="btn-ghost w-full">
-              Fechar
+              {t('app.closeModal')}
             </button>
           </div>
         </div>
