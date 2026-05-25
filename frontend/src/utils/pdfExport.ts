@@ -79,7 +79,7 @@ export function gerarHTMLdoLaudo(data: DiagnosticoDetalhe, parecer: string): str
   return `
     <!DOCTYPE html>
     <html>
-    <head><meta charset="utf-8"><title>${t('pdf.reportTitle')} #${data.id}</title>
+    <head><meta charset="utf-8"><title>${t('app.pdf.reportTitle')} #${data.id}</title>
     <style>
       body { font-family: Arial, sans-serif; margin: 40px; color: #000; }
       h1, h2, h3 { margin: 0 0 8px; }
@@ -92,8 +92,8 @@ export function gerarHTMLdoLaudo(data: DiagnosticoDetalhe, parecer: string): str
     </style></head>
     <body onload="window.print();">
       <div class="header">
-        <h1>${t('pdf.reportTitle')} #${data.id}</h1>
-        <p>${t('pdf.issuedAt', { date: new Date().toLocaleString(i18n.language === 'en' ? 'en-US' : 'pt-BR') })}</p>
+        <h1>${t('app.pdf.reportTitle')} #${data.id}</h1>
+        <p>${t('app.pdf.issuedAt', { date: new Date().toLocaleString(i18n.language === 'en' ? 'en-US' : 'pt-BR') })}</p>
       </div>
       <div class="field"><span class="label">${t('app.patient')}</span><br><span class="value">${data.paciente}</span></div>
       <div class="field"><span class="label">${t('app.ageSex')}</span><br><span class="value">${data.idade} ${t('anos')} · ${data.sexo === 'M' ? t('app.male') : t('app.female')}</span></div>
@@ -101,7 +101,7 @@ export function gerarHTMLdoLaudo(data: DiagnosticoDetalhe, parecer: string): str
       <div class="field"><span class="label">${t('app.model')}</span><br><span class="value">${data.modelo_versao}</span></div>
 
       <h2>${t('app.images')}</h2>
-      ${imagensHTML || `<p>${t('diagnosis.noImages')}</p>`}
+      ${imagensHTML || `<p>${t('app.diagnosis.noImages')}</p>`}
 
       <h2>${t('app.analysisResults')}</h2>
       ${resultadosHTML}
@@ -109,7 +109,7 @@ export function gerarHTMLdoLaudo(data: DiagnosticoDetalhe, parecer: string): str
       <div class="parecer">
         <h2>${t('app.report')}</h2>
         <p style="white-space: pre-wrap; min-height: 80px; border: 1px solid #ccc; padding: 12px;">${parecer || t('—')}</p>
-        <p style="margin-top: 40px; text-align: right;">____________________________________<br>${t('pdf.signature')}</p>
+        <p style="margin-top: 40px; text-align: right;">____________________________________<br>${t('app.pdf.signature')}</p>
       </div>
     </body>
     </html>`;

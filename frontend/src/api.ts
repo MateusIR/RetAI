@@ -143,6 +143,7 @@ export async function criarDiagnostico(payload: {
   tipo_oe: boolean;
   file_od?: File;
   file_oe?: File;
+  modelo: 'ConvNextV2' | 'EfficientNetV2'; // <-- 1. Tipagem adicionada aqui
 }) {
   const form = new FormData();
   form.append("nome", payload.nome);
@@ -155,6 +156,8 @@ export async function criarDiagnostico(payload: {
     form.append("file_od", payload.file_od);
   if (payload.tipo_oe && payload.file_oe)
     form.append("file_oe", payload.file_oe);
+
+  form.append("modelo", payload.modelo); // <-- 2. Append no FormData adicionado aqui
 
   // Não inclua Content-Type aqui — o browser define o boundary do multipart automaticamente
   const res = await apiFetch(`${BASE}/api/diagnosticos/`, {

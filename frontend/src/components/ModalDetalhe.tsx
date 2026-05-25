@@ -128,7 +128,7 @@ function BarraConfianca({ valor }: { valor: number }) {
           style={{ width: `${valor}%` }}
         />
       </div>
-      <span className="font-mono text-xs text-slate-300 w-12 text-right">{t('diagnosis.confidenceBar', { valor })}</span>
+      <span className="font-mono text-xs text-slate-300 w-12 text-right">{t('app.diagnosis.confidenceBar', { valor })}</span>
     </div>
   )
 }
@@ -427,7 +427,7 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                               <BarraConfianca valor={r.confianca} />
                             </div>
                             <div className="hidden print:block text-sm font-bold">
-                              {t('diagnosis.confidenceBar', { valor: r.confianca })}
+                              {t('app.diagnosis.confidenceBar', { valor: r.confianca })}
                             </div>
                           </div>
                         ))}

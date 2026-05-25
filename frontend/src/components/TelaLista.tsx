@@ -18,8 +18,8 @@ const DOENCAS: { tag: string; nome: string }[] = [
   { tag: 'diabetic_retinopathy', nome: 'Retinopatia Diabética' },
   { tag: 'macular_edema',        nome: 'Edema Macular' },
   { tag: 'scar',                 nome: 'Cicatriz Retiniana' },
-  { tag: 'amd',                  nome: 'Degeneração Macular (AMD)' },
-  { tag: 'drusens',              nome: 'Drusens' },
+  { tag: 'amd',                  nome: 'Degeneração Macular (DMRI)' },
+  { tag: 'drusens',              nome: 'Drusas' },
   { tag: 'myopic_fundus',        nome: 'Fundo Míope' },
   { tag: 'increased_cup_disc',   nome: 'Aumento da Relação C/D' },
   { tag: 'vascular_occlusion',   nome: 'Oclusão Vascular Retiniana' },
@@ -183,7 +183,7 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
       {currentUser?.is_superadmin && (
         <label className="flex items-center gap-2 mb-4 cursor-pointer w-max">
           <input type="checkbox" checked={apenasMeus} onChange={e => { setApenasMeus(e.target.checked); setPage(1) }} className="w-4 h-4 accent-accent rounded cursor-pointer" />
-          <span className="text-sm font-medium text-slate-300">{t('list.showOnlyMine')}</span>
+          <span className="text-sm font-medium text-slate-300">{t('app.list.showOnlyMine')}</span>
         </label>
       )}
 
@@ -208,10 +208,10 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
       {/* Filtro doenças */}
       <div className="bg-surface-2 p-4 rounded-xl border border-surface-4 mb-6">
         <div className="flex justify-between items-center mb-3">
-          <label className="label m-0 text-slate-300">{t('list.filterByDiseases')}</label>
+          <label className="label m-0 text-slate-300">{t('app.list.filterByDiseases')}</label>
           <div className="flex bg-surface-3 rounded-lg p-0.5 border border-surface-4">
-            <button onClick={() => setDoencasLogic('OR')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'OR' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>{t('list.any')}</button>
-            <button onClick={() => setDoencasLogic('AND')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'AND' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>{t('list.all')}</button>
+            <button onClick={() => setDoencasLogic('OR')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'OR' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>{t('app.list.any')}</button>
+            <button onClick={() => setDoencasLogic('AND')} className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${doencasLogic === 'AND' ? 'bg-accent text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}>{t('app.list.all')}</button>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -225,7 +225,7 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
                   : 'bg-surface-3 border-transparent text-slate-400 hover:border-surface-4 hover:text-slate-200'
               }`}
             >
-              {t(`list.disease.${tag}`)}
+              {t(`app.list.disease.${tag}`)}
             </button>
           ))}
         </div>
@@ -234,12 +234,12 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
             onClick={() => { setFiltroTags([]); setPage(1) }}
             className="mt-3 text-xs text-slate-500 hover:text-slate-300 transition-colors"
           >
-            {t('list.clearFilters')}
+            {t('app.list.clearFilters')}
           </button>
         )}
       </div>
 
-      {hasProcessing && <div className="flex items-center gap-2 text-xs text-amber-400 mb-4 px-1"><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" /> {t('list.autoRefresh')}</div>}
+      {hasProcessing && <div className="flex items-center gap-2 text-xs text-amber-400 mb-4 px-1"><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" /> {t('app.list.autoRefresh')}</div>}
       {error && <div className="card p-4 mb-4 border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-center gap-3"><svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{error}</div>}
 
       {/* Ações em massa */}
@@ -298,17 +298,17 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
                      <div className="flex flex-wrap gap-1">
                        {diag.doencas_detectadas.map(d => (
                          <span
-                           key={d}
-                           onClick={e => { e.stopPropagation(); toggleTag(normalizarTag(d)) }}
-                           title={`${t('list.filterByDiseases')} ${nomeDoenca(d)}`}
-                           className={`px-2 py-0.5 rounded-md text-[10px] border cursor-pointer transition-all ${
-                             filtroTags.includes(normalizarTag(d))
-                               ? 'bg-accent/30 text-accent-glow border-accent/50'
-                               : 'bg-accent/15 text-accent-glow border-accent/20 hover:bg-accent/25'
-                           }`}
-                         >
-                           {nomeDoenca(d)}
-                         </span>
+                          key={d}
+                          onClick={e => { e.stopPropagation(); toggleTag(normalizarTag(d)) }}
+                          title={`${t('app.list.filterByDiseases')} ${t(`app.list.disease.${normalizarTag(d)}`, { defaultValue: nomeDoenca(d) })}`}
+                          className={`px-2 py-0.5 rounded-md text-[10px] border cursor-pointer transition-all ${
+                            filtroTags.includes(normalizarTag(d))
+                              ? 'bg-accent/30 text-accent-glow border-accent/50'
+                              : 'bg-accent/15 text-accent-glow border-accent/20 hover:bg-accent/25'
+                          }`}
+                        >
+                          {t(`app.list.disease.${normalizarTag(d)}`, { defaultValue: nomeDoenca(d) })}
+                        </span>
                        ))}
                      </div>
                    ) : <span className="text-slate-500">—</span>}
@@ -324,11 +324,11 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
       {/* Paginação */}
       {!loading && totalItems > 0 && (
         <div className="flex justify-between items-center mt-4 px-1">
-          <p className="text-xs text-slate-500">{t('list.showing', { count: diagnosticos.length, total: totalItems })}</p>
+          <p className="text-xs text-slate-500">{t('app.list.showing', { count: diagnosticos.length, total: totalItems })}</p>
           <div className="flex gap-2 items-center">
-            <button className="btn-ghost py-1.5 px-3 text-xs" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>{t('list.previous')}</button>
-            <span className="text-xs text-slate-400 font-medium">{t('list.page', { page })}</span>
-            <button className="btn-ghost py-1.5 px-3 text-xs" disabled={page * itemsPerPage >= totalItems} onClick={() => setPage(p => p + 1)}>{t('list.next')}</button>
+            <button className="btn-ghost py-1.5 px-3 text-xs" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>{t('app.list.previous')}</button>
+            <span className="text-xs text-slate-400 font-medium">{t('app.list.page', { page })}</span>
+            <button className="btn-ghost py-1.5 px-3 text-xs" disabled={page * itemsPerPage >= totalItems} onClick={() => setPage(p => p + 1)}>{t('app.list.next')}</button>
           </div>
         </div>
       )}

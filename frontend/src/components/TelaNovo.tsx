@@ -16,6 +16,7 @@ interface FormState {
   oe: boolean
   fileOd: File | null
   fileOe: File | null
+  modelo: 'ConvNextV2' | 'EfficientNetV2' // <- Novo campo
 }
 
 const INITIAL: FormState = {
@@ -27,6 +28,7 @@ const INITIAL: FormState = {
   oe: false,
   fileOd: null,
   fileOe: null,
+  modelo: 'ConvNextV2',
 }
 
 function RequiredMark() {
@@ -36,6 +38,9 @@ function RequiredMark() {
 function FileDropZone({ label, file, onChange }: { label: string; file: File | null; onChange: (f: File | null) => void }) {
   const ref = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
+  
+  // <-- Hook extraído para o escopo principal do componente
+  const { t } = useTranslation() 
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragging(false)
@@ -68,7 +73,8 @@ function FileDropZone({ label, file, onChange }: { label: string; file: File | n
         <div>
           <svg className="w-8 h-8 mx-auto mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
           <p className="text-sm text-slate-400">{label}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{useTranslation().t('app.selectImage')}</p>
+          {/* Usa a função instanciada lá em cima */}
+          <p className="text-xs text-slate-500 mt-0.5">{t('app.selectImage')}</p> 
         </div>
       )}
     </div>
@@ -90,27 +96,28 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
 
   const podeEnviar = form.nome.trim() && form.idade && Number(form.idade) > 0 && ((form.od && form.fileOd) || (form.oe && form.fileOe))
 
-  const handleSubmit = async () => {
-    if (!podeEnviar) return
-    setStep('sending'); setError(null)
-    try {
-      const res = await criarDiagnostico({
-        nome: form.nome.trim(),
-        cpf: form.cpf.trim() || undefined,
-        idade: Number(form.idade),
-        sexo: form.sexo,
-        tipo_od: form.od,
-        tipo_oe: form.oe,
-        file_od: form.fileOd ?? undefined,
-        file_oe: form.fileOe ?? undefined,
-      })
-      setDiagnosticoId(res.diagnostico_id)
-      setStep('done')
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t('app.error'))
-      setStep('form')
-    }
+const handleSubmit = async () => {
+  if (!podeEnviar) return
+  setStep('sending'); setError(null)
+  try {
+    const res = await criarDiagnostico({
+      nome: form.nome.trim(),
+      cpf: form.cpf.trim() || undefined,
+      idade: Number(form.idade),
+      sexo: form.sexo,
+      tipo_od: form.od,
+      tipo_oe: form.oe,
+      file_od: form.fileOd ?? undefined,
+      file_oe: form.fileOe ?? undefined,
+      modelo: form.modelo, // <- Passe o modelo selecionado para a API
+    })
+    setDiagnosticoId(res.diagnostico_id)
+    setStep('done')
+  } catch (e: unknown) {
+    setError(e instanceof Error ? e.message : t('app.error'))
+    setStep('form')
   }
+}
 
   const handleNovo = () => {
     setForm(INITIAL); setStep('form'); setError(null); setDiagnosticoId(null); onNovo()
@@ -194,6 +201,22 @@ export default function TelaNovo({ onSuccess, onNovo }: Props) {
               </label>
               {form.oe && <div className="animate-slide-up"><FileDropZone label={t('app.imageOE')} file={form.fileOe} onChange={f => setField('fileOe', f)} /></div>}
             </div>
+          </div>
+        </section>
+        <section className="space-y-3">
+          <label className="label text-sm font-medium text-slate-200">{t('app.selectModel')}</label>
+          <div className="grid grid-cols-1 gap-2">
+            <select 
+              className="input-field w-full bg-surface-2 text-white border border-surface-4 rounded-lg p-2.5"
+              value={form.modelo} 
+              onChange={e => setField('modelo', e.target.value as 'ConvNextV2' | 'EfficientNetV2')}
+            >
+              <option value="ConvNextV2">{t('app.modelConvnextLabel')}</option>
+              <option value="EfficientNetV2">{t('app.modelEfficientLabel')}</option>
+            </select>
+            <p className="text-xs text-slate-400 italic mt-1">
+              {t('app.modelPreferenceWarning')}
+            </p>
           </div>
         </section>
 

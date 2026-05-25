@@ -21,7 +21,7 @@ from fastapi.responses import StreamingResponse
 import os as _os
 
 from models import Base, Medico, Paciente, Diagnostico, Imagem, Resultado
-from ml_engine import analisar_imagem, MODEL_VERSION
+from ml_engine import analisar_imagem
 from validators import validar_cpf, validar_crm, validar_correspondencia_nome
 from i18n import t
 
@@ -69,9 +69,17 @@ def processar_diagnostico_worker(diagnostico_id: int):
         diagnostico = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
         if not diagnostico:
             return
+            
+        # O modelo_versao armazenará "ConvNextV2" ou "EfficientNetV2"
+        modelo_escolhido = diagnostico.modelo_versao or "ConvNextV2"
+        
+        # Mapeamento do array de classes configurado em seu sistema
+        from models_config import CLASSES 
+
         for img in diagnostico.imagens:
             try:
-                resultados_ia = analisar_imagem(img.caminho_arquivo)
+                # Passa a string do modelo escolhido para a rotina de processamento
+                resultados_ia = analisar_imagem(img.caminho_arquivo, modelo_escolhido)
                 for res in resultados_ia:
                     db.add(Resultado(
                         diagnostico_id=diagnostico.id,
@@ -79,12 +87,14 @@ def processar_diagnostico_worker(diagnostico_id: int):
                         confianca=res["confianca"],
                         olho_analisado=img.tipo,
                     ))
-            except Exception:
+            except Exception as img_err:
+                print(f"Erro ao processar imagem individual: {img_err}")
                 pass
+                
         diagnostico.status = "CONCLUIDO"
         diagnostico.data_finalizacao = datetime.now(timezone.utc)
         db.commit()
-    except Exception:
+    except Exception as err:
         db.rollback()
         diag = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
         if diag:
@@ -422,9 +432,15 @@ def promover_medico(medico_id: int, db: Session = Depends(get_db),
 @app.post("/api/diagnosticos/")
 async def criar_diagnostico(
     background_tasks: BackgroundTasks,
-    nome: str = Form(...), idade: int = Form(...), sexo: str = Form(...),
-    cpf: Optional[str] = Form(None), tipo_od: bool = Form(False), tipo_oe: bool = Form(False),
-    file_od: Optional[UploadFile] = File(None), file_oe: Optional[UploadFile] = File(None),
+    nome: str = Form(...), 
+    idade: int = Form(...), 
+    sexo: str = Form(...),
+    cpf: Optional[str] = Form(None), 
+    tipo_od: bool = Form(False), 
+    tipo_oe: bool = Form(False),
+    file_od: Optional[UploadFile] = File(None), 
+    file_oe: Optional[UploadFile] = File(None),
+    modelo: str = Form("convnext"),  # <- Mantido o novo campo com default
     db: Session = Depends(get_db),
     medico_atual: Medico = Depends(get_medico_atual),
     lang: str = Query("pt_BR"),
@@ -435,22 +451,9 @@ async def criar_diagnostico(
         raise HTTPException(status_code=400, detail=t("Arquivo OD não enviado.", lang))
     if tipo_oe and not file_oe:
         raise HTTPException(status_code=400, detail=t("Arquivo OE não enviado.", lang))
-
-    paciente = Paciente(nome=nome.strip(), cpf=cpf, idade=idade, sexo=sexo)
-    db.add(paciente)
-    db.commit()
-    db.refresh(paciente)
-
-    diagnostico = Diagnostico(
-        paciente_id=paciente.id,
-        medico_id=medico_atual.id,
-        status="PROCESSANDO",
-        modelo_versao=MODEL_VERSION,
-    )
-    db.add(diagnostico)
-    db.commit()
-    db.refresh(diagnostico)
-
+    
+    # ── FUNÇÃO RESTAURADA ─────────────────────────────────────────────────────
+    # Define a lógica local para salvar as imagens enviadas via multipart form
     def salvar_imagem(upload: UploadFile, tipo: str) -> str:
         ext = os.path.splitext(upload.filename)[-1] or ".jpg"
         nome_arquivo = f"{uuid.uuid4()}_{tipo}{ext}"
@@ -458,7 +461,26 @@ async def criar_diagnostico(
         with open(caminho, "wb") as buffer:
             shutil.copyfileobj(upload.file, buffer)
         return caminho
+    # ──────────────────────────────────────────────────────────────────────────
 
+    # Criação da entidade paciente
+    paciente = Paciente(nome=nome.strip(), cpf=cpf, idade=idade, sexo=sexo)
+    db.add(paciente)
+    db.commit()
+    db.refresh(paciente)
+
+    # Criação do diagnóstico associando a versão do modelo enviada pelo frontend
+    diagnostico = Diagnostico(
+        paciente_id=paciente.id,
+        medico_id=medico_atual.id,
+        status="PROCESSANDO",
+        modelo_versao=modelo, 
+    )
+    db.add(diagnostico)
+    db.commit()
+    db.refresh(diagnostico)
+
+    # Salvamento das imagens usando a função restaurada acima
     if tipo_od and file_od:
         db.add(Imagem(diagnostico_id=diagnostico.id, tipo="OD", caminho_arquivo=salvar_imagem(file_od, "OD")))
     if tipo_oe and file_oe:

@@ -180,8 +180,8 @@ export default function App() {
   const handleActionUser = async (id: number, action: "del" | "prom") => {
     if (action === "del") {
       const confirmed = await showConfirm(
-        t('userManagement.confirmDeleteTitle'),
-        t('userManagement.confirmDeleteMessage'),
+        t('app.userManagement.confirmDeleteTitle'),
+        t('app.userManagement.confirmDeleteMessage'),
         'danger', t('app.deleteConfirm'), t('app.cancel')
       )
       if (!confirmed) return
@@ -351,7 +351,7 @@ export default function App() {
       {modalUsuarios && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={e => e.target === e.currentTarget && setModalUsuarios(false)}>
           <div className="card w-full max-w-3xl p-6 animate-slide-up">
-            <h2 className="text-xl font-display font-bold text-white mb-4">{t('userManagement.title')}</h2>
+            <h2 className="text-xl font-display font-bold text-white mb-4">{t('app.userManagement.title')}</h2>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
               {listaUsers.map(u => (
                 <div key={u.id} className={`p-3 rounded-lg border ${u.solicitou_reset ? 'bg-orange-500/10 border-orange-500/30' : 'bg-surface-3 border-surface-4'}`}>
@@ -361,15 +361,15 @@ export default function App() {
                       <input className="input-field py-1 text-sm flex-1" value={editForm.nome}  onChange={e => setEditForm({ ...editForm, nome: e.target.value })}  placeholder={t('app.name')} />
                       <input className="input-field py-1 text-sm w-32" value={editForm.crm}   onChange={e => setEditForm({ ...editForm, crm: e.target.value })}   placeholder="CRM" />
                       <input className="input-field py-1 text-sm flex-1" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="E-mail" />
-                      <button onClick={() => handleSaveEdit(u.id)} className="btn-primary py-1 px-3 text-xs">{t('userManagement.saveEdit')}</button>
-                      <button onClick={() => setEditUserId(null)} className="btn-ghost py-1 px-3 text-xs">{t('userManagement.cancelEdit')}</button>
+                      <button onClick={() => handleSaveEdit(u.id)} className="btn-primary py-1 px-3 text-xs">{t('app.userManagement.saveEdit')}</button>
+                      <button onClick={() => setEditUserId(null)} className="btn-ghost py-1 px-3 text-xs">{t('app.userManagement.cancelEdit')}</button>
                     </div>
                   ) : resetUserId === u.id ? (
                     <div className="flex gap-2 items-center">
-                      <span className="text-sm font-medium text-white flex-1">{t('userManagement.newPasswordFor', { name: u.nome })}</span>
-                      <input type="password" className="input-field py-1 text-sm flex-1" value={novaSenhaAdmin} onChange={e => setNovaSenhaAdmin(e.target.value)} placeholder={t('userManagement.passwordPlaceholder')} />
-                      <button onClick={() => handleExecutarReset(u.id)} className="btn-primary py-1 px-3 text-xs bg-amber-500 hover:bg-amber-600 shadow-amber-500/20 text-white">{t('userManagement.savePassword')}</button>
-                      <button onClick={() => { setResetUserId(null); setNovaSenhaAdmin("") }} className="btn-ghost py-1 px-3 text-xs">{t('userManagement.cancelReset')}</button>
+                      <span className="text-sm font-medium text-white flex-1">{t('app.userManagement.newPasswordFor', { name: u.nome })}</span>
+                      <input type="password" className="input-field py-1 text-sm flex-1" value={novaSenhaAdmin} onChange={e => setNovaSenhaAdmin(e.target.value)} placeholder={t('app.userManagement.passwordPlaceholder')} />
+                      <button onClick={() => handleExecutarReset(u.id)} className="btn-primary py-1 px-3 text-xs bg-amber-500 hover:bg-amber-600 shadow-amber-500/20 text-white">{t('app.userManagement.savePassword')}</button>
+                      <button onClick={() => { setResetUserId(null); setNovaSenhaAdmin("") }} className="btn-ghost py-1 px-3 text-xs">{t('app.userManagement.cancelReset')}</button>
                     </div>
                   ) : (
                     <div className="flex justify-between items-center">
@@ -398,12 +398,12 @@ export default function App() {
                       <div className="flex gap-2 flex-wrap justify-end">
                         {user?.is_superadmin && u.solicitou_reset && (
                           <button onClick={() => setResetUserId(u.id)} className="text-orange-400 bg-orange-400/10 hover:bg-orange-400/20 text-xs px-2 py-1 rounded transition-colors font-medium border border-transparent">
-                            {t('userManagement.resetPassword')}
+                            {t('app.userManagement.resetPassword')}
                           </button>
                         )}
                         {(user?.is_superadmin || u.id === user?.id) && (
                           <button onClick={() => { setEditUserId(u.id); setEditForm({ nome: u.nome, crm: u.crm, email: u.email }) }} className="text-xs text-blue-400 hover:bg-blue-400/10 px-2 py-1 rounded transition-colors">
-                            {t('userManagement.editUser')}
+                            {t('app.userManagement.editUser')}
                           </button>
                         )}
                         {user?.is_superadmin && !u.is_superadmin && (
@@ -412,20 +412,20 @@ export default function App() {
                               onClick={() => setUserToPromote(u.id)}
                               className="text-xs text-emerald-400 hover:bg-emerald-400/10 px-2 py-1 rounded transition-colors"
                             >
-                              {t('userManagement.promoteUser')}
+                              {t('app.userManagement.promoteUser')}
                             </button>
                           ) : (
                             <span
                               className="text-xs text-slate-600 px-2 py-1 rounded cursor-not-allowed"
-                              title={t('userManagement.notVerifiedCannotPromote')}
+                              title={t('app.userManagement.notVerifiedCannotPromote')}
                             >
-                              {t('userManagement.promoteUser')}
+                              {t('app.userManagement.promoteUser')}
                             </span>
                           )
                         )}
                         {(user?.is_superadmin || u.id === user?.id) && (
                           <button onClick={() => handleActionUser(u.id, "del")} className="text-xs text-red-400 hover:bg-red-400/10 px-2 py-1 rounded transition-colors">
-                            {t('userManagement.deleteUser')}
+                            {t('app.userManagement.deleteUser')}
                           </button>
                         )}
                       </div>
@@ -448,25 +448,25 @@ export default function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">{t('userManagement.promoteTitle')}</h2>
+            <h2 className="text-xl font-bold text-white mb-2">{t('app.userManagement.promoteTitle')}</h2>
             <div className="text-sm text-slate-400 mb-6 space-y-3 text-left">
-              <p>{t('userManagement.promoteMessage')}</p>
+              <p>{t('app.userManagement.promoteMessage')}</p>
               <div className="bg-surface-3 p-3 rounded-lg border border-surface-4">
-                <p className="text-xs font-semibold text-slate-300 mb-2">{t('userManagement.promoteDetails')}</p>
+                <p className="text-xs font-semibold text-slate-300 mb-2">{t('app.userManagement.promoteDetails')}</p>
                 <ul className="list-disc pl-4 text-xs text-amber-400/80 space-y-1">
-                  <li>{t('userManagement.promoteItem1')}</li>
-                  <li>{t('userManagement.promoteItem2')}</li>
-                  <li>{t('userManagement.promoteItem3')}</li>
+                  <li>{t('app.userManagement.promoteItem1')}</li>
+                  <li>{t('app.userManagement.promoteItem2')}</li>
+                  <li>{t('app.userManagement.promoteItem3')}</li>
                 </ul>
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setUserToPromote(null)} className="btn-ghost flex-1">{t('userManagement.cancelPromote')}</button>
+              <button onClick={() => setUserToPromote(null)} className="btn-ghost flex-1">{t('app.userManagement.cancelPromote')}</button>
               <button
                 onClick={() => { handleActionUser(userToPromote, "prom"); setUserToPromote(null) }}
                 className="bg-amber-500 hover:bg-amber-600 text-white font-medium px-4 py-2 rounded-lg flex-1 transition-colors"
               >
-                {t('userManagement.promoteConfirm')}
+                {t('app.userManagement.promoteConfirm')}
               </button>
             </div>
           </div>
@@ -482,20 +482,20 @@ export default function App() {
                 <span className="font-bold text-white text-xl">R</span>
               </div>
               <div>
-                <h2 className="text-xl font-display font-bold text-white leading-none">{t('aboutModal.title')}</h2>
-                <p className="text-xs text-slate-400 mt-1">{t('aboutModal.version')}</p>
+                <h2 className="text-xl font-display font-bold text-white leading-none">{t('app.aboutModal.title')}</h2>
+                <p className="text-xs text-slate-400 mt-1">{t('app.aboutModal.version')}</p>
               </div>
             </div>
             <div className="text-sm text-slate-400 space-y-4">
-              <p>{t('aboutModal.description')}</p>
+              <p>{t('app.aboutModal.description')}</p>
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                <p className="text-amber-400 font-medium mb-1">{t('aboutModal.legalWarningTitle')}</p>
+                <p className="text-amber-400 font-medium mb-1">{t('app.aboutModal.legalWarningTitle')}</p>
                 <p className="text-xs text-amber-500/80 leading-relaxed">
-                  {t('aboutModal.legalWarningText')}
+                  {t('app.aboutModal.legalWarningText')}
                 </p>
               </div>
             </div>
-            <button onClick={() => setModalSobre(false)} className="btn-primary w-full mt-6">{t('aboutModal.okButton')}</button>
+            <button onClick={() => setModalSobre(false)} className="btn-primary w-full mt-6">{t('app.aboutModal.okButton')}</button>
           </div>
         </div>
       )}

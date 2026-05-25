@@ -47,8 +47,8 @@
     "female": "Female",
     "cpf": "CPF",
     "selectImage": "Click or drag an image",
-    "od": "Right Eye (OD)",
-    "oe": "Left Eye (OE)",
+    "od": "Right Eye",
+    "oe": "Left Eye",
     "imageOD": "Right Eye Image (fundoscopy)",
     "imageOE": "Left Eye Image (fundoscopy)",
     "generatingDiagnosis": "Generate Diagnosis",
@@ -82,6 +82,10 @@
     "clickOrEsc": "Click outside or press Esc to close",
     "selectedItems": "item(s) selected",
     "patientData": "Patient data",
+    "selectModel": "Select the AI Model",
+      "modelConvnextLabel": "ConvNeXt V2 Tiny (Most Accurate)",
+      "modelEfficientLabel": "EfficientNet V2 S (Lighter)",
+      "modelPreferenceWarning": "The ConvNeXt model offers higher diagnostic accuracy, while the EfficientNet is optimized to be lighter and faster.",
     "login": {
       "title": "Log in to access the system",
       "registerTitle": "Create your medical account",
@@ -211,8 +215,8 @@
       "analysisResults": "Analysis Results",
       "physicianReport": "Attending Physician's Report",
       "signature": "Signature and stamp",
-      "eyeRight": "Right Eye (OD)",
-      "eyeLeft": "Left Eye (OE)"
+      "eyeRight": "Right Eye",
+      "eyeLeft": "Left Eye"
     }
   }
 }
