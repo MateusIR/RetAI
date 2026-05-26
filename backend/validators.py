@@ -3,6 +3,7 @@ validators.py — Validação de CPF e CRM para o RetAI, com internacionalizaç�
 
 CPF : algoritmo oficial dos dígitos verificadores (100 % local).
 CRM : consulta a API consultacrm.com.br com fallback automático entre duas chaves.
+      Inclui cache em memória (LRU) para evitar gasto desnecessário de tokens.
 
 Parâmetro 'lang' esperado em todas as funções públicas para retornar mensagens traduzidas.
 """
@@ -10,6 +11,7 @@ Parâmetro 'lang' esperado em todas as funções públicas para retornar mensage
 from os import getenv
 import re
 import unicodedata
+from collections import OrderedDict
 import httpx
 from fastapi import HTTPException
 from i18n import t
@@ -85,6 +87,10 @@ _CFM_TIMEOUT = 8.0
 _CONSULTACRM_BASE = "https://www.consultacrm.com.br/api/index.php"
 _CONSULTACRM_KEYS = [k for k in getenv("CONSULTACRM_KEYS", "").split(",") if k]
 
+# Configuração do Cache LRU para a API de CRM
+_CRM_CACHE_MAX_SIZE = 500
+_CRM_CACHE: OrderedDict[str, dict] = OrderedDict()
+
 def _parse_crm(crm: str, lang: str = "pt_BR") -> tuple[str, str]:
     crm = crm.strip().upper()
     crm = re.sub(r"^CRM[\s\-/]*", "", crm)
@@ -142,24 +148,39 @@ async def _consultar_crm_com_chave(numero: str, uf: str, chave: str, lang: str) 
 
 async def validar_crm(crm: str, lang: str = "pt_BR") -> dict:
     numero, uf = _parse_crm(crm, lang)
+    cache_key = f"{numero}-{uf}"
 
     data = None
-    for chave in _CONSULTACRM_KEYS:
-        data = await _consultar_crm_com_chave(numero, uf, chave, lang)
-        if data is not None:
-            break
 
-    if data is None:
-        raise HTTPException(
-            503,
-            detail=t(
-                "Limite de consultas de CRM atingido em todas as chaves disponíveis. \n"
-                "Tente novamente amanhã ou contate o administrador. \n"
-                "Em caso de urgencia, crie uma conta não verificada momentaneamente até o limite ser renovado.",
-                lang,
-            ),
-        )
+    # 1. Verifica se já temos a resposta da API no cache
+    if cache_key in _CRM_CACHE:
+        data = _CRM_CACHE[cache_key]
+        _CRM_CACHE.move_to_end(cache_key) # Marca como usado recentemente no LRU
+    else:
+        # 2. Se não estiver no cache, faz as consultas na API
+        for chave in _CONSULTACRM_KEYS:
+            data = await _consultar_crm_com_chave(numero, uf, chave, lang)
+            if data is not None:
+                break
 
+        if data is None:
+            raise HTTPException(
+                503,
+                detail=t(
+                    "Limite de consultas de CRM atingido em todas as chaves disponíveis. \n"
+                    "Tente novamente amanhã ou contate o administrador. \n"
+                    "Em caso de urgencia, crie uma conta não verificada momentaneamente até o limite ser renovado.",
+                    lang,
+                ),
+            )
+        
+        # 3. Salva a resposta com sucesso no cache
+        _CRM_CACHE[cache_key] = data
+        # Mantém o limite de tamanho para não consumir RAM infinitamente
+        if len(_CRM_CACHE) > _CRM_CACHE_MAX_SIZE:
+            _CRM_CACHE.popitem(last=False) # Remove o item mais antigo (primeiro inserido)
+
+    # 4. Restante da validação e extração dos dados continua igual
     total = int(data.get("total", 0))
     items = data.get("item") or []
 

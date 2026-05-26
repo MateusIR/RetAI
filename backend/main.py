@@ -83,7 +83,7 @@ def processar_diagnostico_worker(diagnostico_id: int):
                 for res in resultados_ia:
                     db.add(Resultado(
                         diagnostico_id=diagnostico.id,
-                        doenca=res["doenca"],
+                        doenca=res["tag"],
                         confianca=res["confianca"],
                         olho_analisado=img.tipo,
                     ))

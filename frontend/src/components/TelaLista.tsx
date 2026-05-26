@@ -26,25 +26,6 @@ const DOENCAS: { tag: string; nome: string }[] = [
   { tag: 'retinal_detachment',   nome: 'Descolamento de Retina' },
 ];
 
-const TAG_LEGACY_MAP: Record<string, string> = {
-  'Retinopatia Diabética':              'diabetic_retinopathy',
-  'Glaucoma':                           'increased_cup_disc',
-  'Catarata':                           'scar',
-  'DMRI':                               'amd',
-  'Oclusão de Veia Retiniana':          'vascular_occlusion',
-  'Degeneração Macular Relacionada à Idade': 'amd',
-};
-
-function normalizarTag(valor: string): string {
-  if (DOENCAS.some(d => d.tag === valor)) return valor;
-  return TAG_LEGACY_MAP[valor] ?? valor;
-}
-
-function nomeDoenca(valor: string): string {
-  const tag = normalizarTag(valor);
-  const item = DOENCAS.find(d => d.tag === tag);
-  return item?.nome ?? valor;
-}
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation();
@@ -137,7 +118,9 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
     setModalImprimir(false);
     try {
       const token = sessionStorage.getItem('retai_token');
-      const response = await fetch('http://localhost:8000/api/diagnosticos/exportar-pdfs', {
+      const lang = localStorage.getItem('lang')?.replace('-', '_') || 'pt_BR';
+
+      const response = await fetch(`http://localhost:8000/api/diagnosticos/exportar-pdfs?lang=${lang}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -299,15 +282,15 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
                        {diag.doencas_detectadas.map(d => (
                          <span
                           key={d}
-                          onClick={e => { e.stopPropagation(); toggleTag(normalizarTag(d)) }}
-                          title={`${t('app.list.filterByDiseases')} ${t(`app.list.disease.${normalizarTag(d)}`, { defaultValue: nomeDoenca(d) })}`}
+                          onClick={e => { e.stopPropagation(); toggleTag(d) }}
+                          title={`${t('app.list.filterByDiseases')} ${t(`app.list.disease.${d}`)}`}
                           className={`px-2 py-0.5 rounded-md text-[10px] border cursor-pointer transition-all ${
-                            filtroTags.includes(normalizarTag(d))
+                            filtroTags.includes(d)
                               ? 'bg-accent/30 text-accent-glow border-accent/50'
                               : 'bg-accent/15 text-accent-glow border-accent/20 hover:bg-accent/25'
                           }`}
                         >
-                          {t(`app.list.disease.${normalizarTag(d)}`, { defaultValue: nomeDoenca(d) })}
+                          {t(`app.list.disease.${d}`)}
                         </span>
                        ))}
                      </div>

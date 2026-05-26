@@ -7,7 +7,17 @@ Uso:
 """
 
 TRANSLATIONS = {
-    "pt_BR": {},
+    "pt_BR": {
+         "diabetic_retinopathy":  "Retinopatia Diabética",
+        "macular_edema":         "Edema Macular",
+        "scar":                  "Cicatriz Retiniana",
+        "amd":                   "Degeneração Macular (DMRI)",
+        "drusens":               "Drusas",
+        "myopic_fundus":         "Fundo Míope",
+        "increased_cup_disc":    "Aumento da Relação C/D",
+        "vascular_occlusion":    "Oclusão Vascular Retiniana",
+        "retinal_detachment":    "Descolamento de Retina",
+        },
     "en": {
         # ── Autenticação / Erros gerais ──────────────────────────────────
         "Token inválido ou expirado": "Invalid or expired token",
@@ -103,20 +113,19 @@ TRANSLATIONS = {
         "—": "—",
 
         # ── Doenças (nomes em português → inglês) ──────────────────────
-        "Retinopatia Diabética": "Diabetic Retinopathy",
-        "Edema Macular": "Macular Edema",
-        "Cicatriz Retiniana": "Retinal Scar",
-        "Degeneração Macular (DMRI)": "Age-related Macular Degeneration (AMD)",
-        "Drusas": "Drusens",
-        "Fundo Míope": "Myopic Fundus",
-        "Aumento da Relação C/D": "Increased Cup/Disc Ratio",
-        "Oclusão Vascular Retiniana": "Retinal Vascular Occlusion",
-        "Descolamento de Retina": "Retinal Detachment",
-    },
+       # i18n.py — seção de doenças, chaves agora são as tags
+        "diabetic_retinopathy": "Diabetic Retinopathy",
+        "macular_edema":        "Macular Edema",
+        "scar":                 "Retinal Scar",
+        "amd":                  "Age-related Macular Degeneration (AMD)",
+        "drusens":              "Drusens",
+        "myopic_fundus":        "Myopic Fundus",
+        "increased_cup_disc":   "Increased Cup/Disc Ratio",
+        "vascular_occlusion":   "Retinal Vascular Occlusion",
+        "retinal_detachment":   "Retinal Detachment",
+ },
 }
 
 def t(message: str, lang: str = "pt_BR") -> str:
     """Retorna a mensagem traduzida se existir, caso contrário a original."""
-    if lang == "pt_BR":
-        return message
     return TRANSLATIONS.get(lang, {}).get(message, message)

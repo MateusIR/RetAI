@@ -42,6 +42,7 @@
     "fieldRequired": "Preencha nome, idade e envie ao menos uma imagem.",
     "name": "Nome",
     "age": "Idade",
+    "years": "anos",
     "sex": "Sexo",
     "male": "Masculino",
     "female": "Feminino",

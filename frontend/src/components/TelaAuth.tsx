@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+// No topo do componente, após o useTranslation()
 
 type AuthMode = "login" | "register" | "register_unverified" | "forgot" | "admin_self_reset";
 
@@ -13,7 +14,9 @@ const UFS_VALIDAS = [
 ];
 
 export default function TelaAuth({ onLogin }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === "pt-BR" ? "pt_BR" : i18n.language;
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -88,7 +91,7 @@ export default function TelaAuth({ onLogin }: Props) {
         formData.append("username", email.trim());
         formData.append("password", senha);
 
-        const res = await fetch("http://localhost:8000/api/auth/login", {
+        const res = await fetch(`http://localhost:8000/api/auth/login?lang=${lang}`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: formData.toString(),
@@ -102,7 +105,7 @@ export default function TelaAuth({ onLogin }: Props) {
         const data = await res.json();
         onLogin(data.access_token, data.user, Date.now() + data.expires_in * 1000);
       } else if (mode === "register") {
-        const res = await fetch("http://localhost:8000/api/medicos/registrar", {
+        const res = await fetch(`http://localhost:8000/api/medicos/registrar?lang=${lang}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), senha }),
@@ -116,7 +119,7 @@ export default function TelaAuth({ onLogin }: Props) {
         setSuccessMsg(t("app.login.success.registered"));
         changeMode("login");
       } else if (mode === "register_unverified") {
-        const res = await fetch("http://localhost:8000/api/medicos/registrar-nao-verificado", {
+        const res = await fetch(`http://localhost:8000/api/medicos/registrar-nao-verificado?lang=${lang}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nome, email: email.trim(), senha }),
@@ -130,7 +133,7 @@ export default function TelaAuth({ onLogin }: Props) {
         setSuccessMsg(t("app.login.success.unverifiedRegistered"));
         changeMode("login");
       } else if (mode === "forgot") {
-        const res = await fetch("http://localhost:8000/api/auth/solicitar-reset-local", {
+        const res = await fetch(`http://localhost:8000/api/auth/solicitar-reset-local?lang=${lang}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: email.trim() }),
@@ -140,7 +143,7 @@ export default function TelaAuth({ onLogin }: Props) {
 
         setSuccessMsg(t("app.login.success.resetRequested"));
       } else if (mode === "admin_self_reset") {
-        const res = await fetch("http://localhost:8000/api/auth/admin-self-reset", {
+        const res = await fetch(`http://localhost:8000/api/auth/admin-self-reset?lang=${lang}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), nova_senha: senha }),
