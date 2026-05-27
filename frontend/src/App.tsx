@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from 'react-i18next';
 import { appWindow } from "@tauri-apps/api/window";
 import { fetchUsuarios, deleteUsuario, promoverUsuario, editUsuario, Usuario } from "./api";
@@ -101,6 +101,7 @@ export default function App() {
   const [tab, setTab]           = useState<Tab>("lista");
   const [refreshKey, setRefreshKey] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [modalUsuarios, setModalUsuarios] = useState(false);
   const [modalSobre, setModalSobre]       = useState(false);
   const [userToPromote, setUserToPromote] = useState<number | null>(null);
@@ -110,7 +111,41 @@ export default function App() {
   const [resetUserId, setResetUserId]     = useState<number | null>(null);
   const [novaSenhaAdmin, setNovaSenhaAdmin] = useState("");
   const [isProcessing, setIsProcessing]   = useState(false);
+// 1. Mantém a referência atualizada (NÃO APAGUE ESTA PARTE)
+  const isProcessingRef = useRef(isProcessing);
+  useEffect(() => {
+    isProcessingRef.current = isProcessing;
+  }, [isProcessing]);
 
+  useEffect(() => {
+    if (!window.__TAURI__) return;
+
+    const unlistenPromise = appWindow.onCloseRequested(async (event) => {
+      event.preventDefault();
+
+      let shouldClose = true;
+      if (isProcessingRef.current) {
+        shouldClose = await showConfirm(
+          t('app.exitAppTitle'),
+          t('app.exitAppMessage'),
+          'warning', 
+          t('app.exitConfirm'), 
+          t('app.continue')
+        );
+      }
+
+      if (shouldClose) {
+        const unlistenFn = await unlistenPromise;
+        unlistenFn();
+        
+        await appWindow.close();
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unlistenFn) => unlistenFn()).catch(() => {});
+    };
+  }, []);
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const showAlert = (title: string, message: string, type: DialogState['type'] = 'info'): Promise<void> =>
@@ -130,34 +165,27 @@ export default function App() {
         onCancel:  () => { setDialog(null); resolve(false) },
       })
     )
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Se a ref existir e o elemento clicado NÃO estiver dentro dela, fecha o menu
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
 
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
+  
   useEffect(() => {
     const handler = () => showAlert(t('app.sessionExpiredTitle'), t('app.sessionExpiredMessage'), 'warning')
     window.addEventListener("sessao_expirada", handler)
     return () => window.removeEventListener("sessao_expirada", handler)
   }, [t])
-
-  useEffect(() => {
-    if (!window.__TAURI__) return
-    let unlisten: () => void
-
-    const setup = async () => {
-      unlisten = await appWindow.onCloseRequested(async (event) => {
-        if (isProcessing) {
-          event.preventDefault()
-          const confirmed = await showConfirm(
-            t('app.exitAppTitle'),
-            t('app.exitAppMessage'),
-            'warning', t('app.exitConfirm'), t('app.continue')
-          )
-          if (confirmed) await appWindow.close()
-        }
-      })
-    }
-
-    setup()
-    return () => { if (unlisten) unlisten() }
-  }, [isProcessing, t])
 
   const handleLogout = async () => {
     if (isProcessing) {
@@ -323,20 +351,22 @@ export default function App() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
 
-            <button onClick={() => setMenuOpen(!menuOpen)} className="p-1 pr-2 pl-2 rounded bg-surface-2 border-surface-4 text-slate-400 hover:text-white transition-colors">
-              •••
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button onClick={() => setMenuOpen(!menuOpen)} className="p-1 pr-2 pl-2 rounded bg-surface-2 border-surface-4 text-slate-400 hover:text-white transition-colors">
+                •••
+              </button>
 
-            {menuOpen && (
-              <div className="absolute top-10 right-0 w-48 bg-surface-2 border border-surface-4 rounded-xl shadow-2xl py-2 z-50">
-                <button onClick={() => { setMenuOpen(false); setModalUsuarios(true); loadUsers() }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-surface-3 transition-colors">
-                  {t('app.users')} {user?.is_superadmin && <span className="text-accent-glow ml-1 font-bold">[{t('app.adminBadge')}]</span>}
-                </button>
-                <button onClick={() => { setMenuOpen(false); setModalSobre(true) }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-surface-3 transition-colors">
-                  {t('app.about')}
-                </button>
-              </div>
-            )}
+              {menuOpen && (
+                <div className="absolute top-10 right-0 w-48 bg-surface-2 border border-surface-4 rounded-xl shadow-2xl py-2 z-50">
+                  <button onClick={() => { setMenuOpen(false); setModalUsuarios(true); loadUsers() }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-surface-3 transition-colors">
+                    {t('app.users')} {user?.is_superadmin && <span className="text-accent-glow ml-1 font-bold">[{t('app.adminBadge')}]</span>}
+                  </button>
+                  <button onClick={() => { setMenuOpen(false); setModalSobre(true) }} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-surface-3 transition-colors">
+                    {t('app.about')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -479,7 +509,10 @@ export default function App() {
           <div className="card w-full max-w-md p-6 animate-slide-up">
             <div className="flex items-center gap-3 mb-4 border-b border-surface-4 pb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-teal-accent flex items-center justify-center shadow-lg">
-                <span className="font-bold text-white text-xl">R</span>
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
               </div>
               <div>
                 <h2 className="text-xl font-display font-bold text-white leading-none">{t('app.aboutModal.title')}</h2>

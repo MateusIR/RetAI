@@ -135,16 +135,42 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
       }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
       const disposition = response.headers.get('Content-Disposition') || '';
       const filenameMatch = disposition.match(/filename="?(.+?)"?$/);
-      a.download = filenameMatch ? filenameMatch[1] : `laudos_${Date.now()}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const defaultFilename = filenameMatch ? filenameMatch[1] : `laudos_${Date.now()}.pdf`;
+
+      // Tenta forçar a janela "Salvar como..." usando a File System Access API
+      if ('showSaveFilePicker' in window) {
+        try {
+          const fileHandle = await (window as any).showSaveFilePicker({
+            suggestedName: defaultFilename,
+            types: [{
+              description: 'Arquivo PDF',
+              accept: { 'application/pdf': ['.pdf'] },
+            }],
+          });
+          
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        } catch (err: any) {
+          // Se o usuário cancelar a janela de salvar, a API joga um 'AbortError'
+          if (err.name === 'AbortError') {
+            return; // Apenas sai da função sem mostrar erro se o usuário cancelou
+          }
+          throw err; // Se for outro erro, joga para o catch principal
+        }
+      } else {
+        // Fallback: Para navegadores que não suportam a API (ex: Firefox, Safari antigo)
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = defaultFilename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
 
       await showAlert(t('app.exportPDFTitle'), t('app.exportPDFMessage', { count: selectedIds.length }), 'info');
       setSelectedIds([]);

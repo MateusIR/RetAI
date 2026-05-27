@@ -167,13 +167,13 @@
       "cancelPromote": "Cancel"
     },
     "aboutModal": {
-      "title": "About the Platform",
-      "version": "Ocular Diagnosis v0.1",
-      "description": "RetAI is a clinical screening tool based on artificial intelligence.",
-      "legalWarningTitle": "Legal Disclaimer",
-      "legalWarningText": "The results presented by this platform are strictly suggestive and do not replace the report of a qualified physician.",
-      "okButton": "I understand"
-    },
+  "title": "About the Platform",
+  "version": "Ocular Diagnosis v1.0",
+  "description": "RetAI is a local-first clinical screening tool based on artificial intelligence. The platform analyzes retinography (fundoscopy) images to assist in detecting ocular pathologies, operating as a secure second-opinion tool for healthcare professionals.",
+  "legalWarningTitle": "Legal Disclaimer",
+  "legalWarningText": "The results presented by this platform are strictly suggestive and do not replace the report of a qualified physician.",
+  "okButton": "I understand"
+},
     "list": {
       "showOnlyMine": "Show only my diagnoses",
       "filterByDiseases": "Filter by Detected Pathologies",

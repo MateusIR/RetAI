@@ -167,13 +167,13 @@
       "cancelPromote": "Cancelar"
     },
     "aboutModal": {
-      "title": "Sobre a Plataforma",
-      "version": "Diagnóstico Ocular v0.1",
-      "description": "O RetAI é uma ferramenta de triagem clínica baseada em inteligência artificial.",
-      "legalWarningTitle": "Aviso de Responsabilidade Legal",
-      "legalWarningText": "Os resultados apresentados por esta plataforma são estritamente sugestivos e não substituem o laudo de um médico qualificado.",
-      "okButton": "Entendi"
-    },
+  "title": "Sobre a Plataforma",
+  "version": "Diagnóstico Ocular v1.0",
+  "description": "O RetAI é uma ferramenta de triagem clínica local baseada em inteligência artificial. A plataforma analisa imagens de retinografia (fundo de olho) para auxiliar na detecção de patologias oculares, operando como uma ferramenta segura de segunda opinião para profissionais de saúde.",
+  "legalWarningTitle": "Aviso de Responsabilidade Legal",
+  "legalWarningText": "Os resultados apresentados por esta plataforma são estritamente sugestivos e não substituem o laudo de um médico qualificado.",
+  "okButton": "Entendi"
+},
     "list": {
       "showOnlyMine": "Mostrar apenas os meus diagnósticos",
       "filterByDiseases": "Filtrar por Patologias Detectadas",
