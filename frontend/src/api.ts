@@ -19,10 +19,7 @@ const forcarLogoutGlobal = () => {
   window.dispatchEvent(new Event("sessao_expirada"));
 };
 
-async function apiFetch(
-  input: RequestInfo,
-  init: RequestInit = {},
-): Promise<Response> {
+async function apiFetch(input: RequestInfo, init: RequestInit = {}): Promise<Response> {
   const url = new URL(input as string, BASE);
   url.searchParams.set('lang', getCurrentLang());
 
@@ -81,16 +78,13 @@ export interface PaginatedResponse<T> {
   dados: T[];
 }
 
-// ── Usuários ──────────────────────────────────────────────────────────────────
+// ── Funções da API ────────────────────────────────────────────────────────────
 export async function fetchUsuarios(): Promise<Usuario[]> {
   const res = await apiFetch(`${BASE}/api/medicos/`);
   return res.json();
 }
 
-export async function editUsuario(
-  id: number,
-  data: { nome: string; crm: string; email: string },
-) {
+export async function editUsuario(id: number, data: { nome: string; crm: string; email: string }) {
   await apiFetch(`${BASE}/api/medicos/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -106,14 +100,8 @@ export async function promoverUsuario(id: number) {
   await apiFetch(`${BASE}/api/medicos/${id}/promover`, { method: "POST" });
 }
 
-// ── Diagnósticos ──────────────────────────────────────────────────────────────
 export async function fetchDiagnosticos(
-  nomeFiltro?: string,
-  cpfFiltro?: string,
-  doencas: string[] = [],
-  doencasLogic: "AND" | "OR" = "OR",
-  apenasMeus = true,
-  page = 1,
+  nomeFiltro?: string, cpfFiltro?: string, doencas: string[] = [], doencasLogic: "AND" | "OR" = "OR", apenasMeus = true, page = 1
 ): Promise<PaginatedResponse<DiagnosticoListItem>> {
   const params = new URLSearchParams();
   if (nomeFiltro) params.set("nome_filtro", nomeFiltro);
@@ -127,23 +115,15 @@ export async function fetchDiagnosticos(
   return res.json();
 }
 
-export async function fetchDiagnostico(
-  id: number,
-): Promise<DiagnosticoDetalhe> {
+export async function fetchDiagnostico(id: number): Promise<DiagnosticoDetalhe> {
   const res = await apiFetch(`${BASE}/api/diagnosticos/${id}`);
   return res.json();
 }
 
 export async function criarDiagnostico(payload: {
-  nome: string;
-  idade: number;
-  sexo: string;
-  cpf?: string;
-  tipo_od: boolean;
-  tipo_oe: boolean;
-  file_od?: File;
-  file_oe?: File;
-  modelo: 'ConvNextV2' | 'EfficientNetV2'; // <-- 1. Tipagem adicionada aqui
+  nome: string; idade: number; sexo: string; cpf?: string;
+  tipo_od: boolean; tipo_oe: boolean;
+  file_od?: File; file_oe?: File; modelo: 'ConvNextV2' | 'EfficientNetV2';
 }) {
   const form = new FormData();
   form.append("nome", payload.nome);
@@ -152,14 +132,10 @@ export async function criarDiagnostico(payload: {
   if (payload.cpf) form.append("cpf", payload.cpf);
   form.append("tipo_od", String(payload.tipo_od));
   form.append("tipo_oe", String(payload.tipo_oe));
-  if (payload.tipo_od && payload.file_od)
-    form.append("file_od", payload.file_od);
-  if (payload.tipo_oe && payload.file_oe)
-    form.append("file_oe", payload.file_oe);
+  if (payload.tipo_od && payload.file_od) form.append("file_od", payload.file_od);
+  if (payload.tipo_oe && payload.file_oe) form.append("file_oe", payload.file_oe);
+  form.append("modelo", payload.modelo);
 
-  form.append("modelo", payload.modelo); // <-- 2. Append no FormData adicionado aqui
-
-  // Não inclua Content-Type aqui — o browser define o boundary do multipart automaticamente
   const res = await apiFetch(`${BASE}/api/diagnosticos/`, {
     method: "POST",
     body: form,
