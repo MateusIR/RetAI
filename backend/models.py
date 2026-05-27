@@ -8,8 +8,8 @@ class Medico(Base):
     __tablename__ = "medicos"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
-    cpf = Column(String, unique=True, index=True, nullable=True) # Pode ser nulo para não verificados
-    crm = Column(String, unique=True, index=True, nullable=True) # Pode ser nulo para não verificados
+    cpf = Column(String, unique=True, index=True, nullable=True) 
+    crm = Column(String, unique=True, index=True, nullable=True) 
     email = Column(String, unique=True, index=True)
     senha_hash = Column(String)
     is_superadmin = Column(Boolean, default=False)

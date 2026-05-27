@@ -1,8 +1,5 @@
-# models_config.py
-
 # ─────────────────────────────────────────────────────────────────────────────
-# Classes treinadas (multi-label, mesma ordem do TARGET_COLS do notebook)
-# Cada entrada tem: chave interna (tag), nome de exibição em PT-BR
+# Classes treinadas (multi-label)
 # ─────────────────────────────────────────────────────────────────────────────
 CLASSES = [
     {"tag": "diabetic_retinopathy",  "nome": "Retinopatia Diabética"},
@@ -16,7 +13,6 @@ CLASSES = [
     {"tag": "retinal_detachment",    "nome": "Descolamento de Retina"},
 ]
 
-# Você também pode centralizar outras constantes aqui se desejar, como:
 NUM_CLASSES = len(CLASSES)
 IMAGE_SIZE = 256
 THRESHOLD = 0.5

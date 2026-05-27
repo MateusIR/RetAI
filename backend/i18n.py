@@ -1,14 +1,11 @@
 """
 Módulo de internacionalização do backend.
 Mantém dicionários de tradução para pt_BR e en.
-Uso:
-    from i18n import t
-    msg = t("mensagem original", lang)
 """
 
 TRANSLATIONS = {
     "pt_BR": {
-         "diabetic_retinopathy":  "Retinopatia Diabética",
+        "diabetic_retinopathy":  "Retinopatia Diabética",
         "macular_edema":         "Edema Macular",
         "scar":                  "Cicatriz Retiniana",
         "amd":                   "Degeneração Macular (DMRI)",
@@ -17,7 +14,7 @@ TRANSLATIONS = {
         "increased_cup_disc":    "Aumento da Relação C/D",
         "vascular_occlusion":    "Oclusão Vascular Retiniana",
         "retinal_detachment":    "Descolamento de Retina",
-        },
+    },
     "en": {
         # ── Autenticação / Erros gerais ──────────────────────────────────
         "Token inválido ou expirado": "Invalid or expired token",
@@ -112,8 +109,7 @@ TRANSLATIONS = {
         "Assinatura e carimbo": "Signature and stamp",
         "—": "—",
 
-        # ── Doenças (nomes em português → inglês) ──────────────────────
-       # i18n.py — seção de doenças, chaves agora são as tags
+        # ── Doenças ──────────────────────
         "diabetic_retinopathy": "Diabetic Retinopathy",
         "macular_edema":        "Macular Edema",
         "scar":                 "Retinal Scar",
@@ -123,7 +119,7 @@ TRANSLATIONS = {
         "increased_cup_disc":   "Increased Cup/Disc Ratio",
         "vascular_occlusion":   "Retinal Vascular Occlusion",
         "retinal_detachment":   "Retinal Detachment",
- },
+    },
 }
 
 def t(message: str, lang: str = "pt_BR") -> str:
