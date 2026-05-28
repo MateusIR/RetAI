@@ -32,7 +32,7 @@ async def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db), 
             detail=t("O nome informado não confere com o titular do CRM no Conselho.", lang)
         )
 
-    is_first = db.query(Medico).count() == 0
+    is_first = db.query(Medico).filter(Medico.is_superadmin == True).count() == 0
     novo_medico = Medico(
         nome=medico.nome,
         cpf=medico.cpf,
