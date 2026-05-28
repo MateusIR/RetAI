@@ -127,7 +127,7 @@ npm run tauri dev
 
 ## ⬇️ Links e Download
 
-[📥 **Baixar o Aplicativo (Download)**](#) | [📄 **Ler o Artigo Científico**](#)
+[📥 **Baixar o Aplicativo (Download)**](https://drive.google.com/drive/folders/1sP05Jkeo-fZW5V2MVvnPlYOBCFBatMD9?usp=sharing) | [📄 **Ler o Artigo Científico**](#)
 
 
 ---
