@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from 'react-i18next';
 import { appWindow } from "@tauri-apps/api/window";
-
+import { invoke } from "@tauri-apps/api/tauri";
 import { useAuth } from "./useAuth";
 import { useDialog } from "./hooks/useDialog";
 
@@ -13,7 +13,6 @@ import ModalUsuarios from "./components/ModalUsuarios";
 import ModalSobre from "./components/ModalSobre";
 import Dialog from "./components/ui/Dialog";
 
-declare global { interface Window { __TAURI__?: any } }
 type Tab = "lista" | "novo";
 
 export default function App() {
@@ -31,8 +30,29 @@ export default function App() {
   const isProcessingRef = useRef(isProcessing);
   useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
 
+  // PRIMEIRO useEffect: Tela de Splash
   useEffect(() => {
-    if (!window.__TAURI__) return;
+    if (!(window as any).__TAURI__) return;
+
+    const checkBackend = async () => {
+      try {
+        const res = await fetch("http://127.0.0.1:8000/docs");
+        if (res.ok) {
+          await invoke("close_splashscreen");
+        } else {
+          setTimeout(checkBackend, 1000);
+        }
+      } catch {
+        setTimeout(checkBackend, 1000);
+      }
+    };
+
+    checkBackend();
+  }, []); // <--- Faltava essa linha para fechar o useEffect corretamente!
+
+  // SEGUNDO useEffect: Prevenção de fechamento acidental
+  useEffect(() => {
+    if (!(window as any).__TAURI__) return;
     const unlistenPromise = appWindow.onCloseRequested(async (event) => {
       event.preventDefault();
       let shouldClose = true;
@@ -46,8 +66,9 @@ export default function App() {
       }
     });
     return () => { unlistenPromise.then((fn) => fn()).catch(() => {}); };
-  }, []);
+  }, []); // Mantive o array de dependências vazio aqui também
 
+  // TERCEIRO useEffect: Logout global
   useEffect(() => {
     const handler = () => showAlert(t('app.sessionExpiredTitle'), t('app.sessionExpiredMessage'), 'warning');
     window.addEventListener("sessao_expirada", handler);

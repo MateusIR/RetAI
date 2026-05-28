@@ -184,7 +184,9 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
                         {resultados.map((r, i) => (
                           <div key={i}>
                             <div className="flex justify-between items-baseline mb-1.5">
-                              <span className="text-sm text-slate-200 print:text-black">{r.doenca}</span>
+                              <span className="text-sm text-slate-200 print:text-black">
+                                {t(`app.list.disease.${r.doenca}`, { defaultValue: r.doenca })}
+                              </span>
                             </div>
                             <div className="print:hidden"><BarraConfianca valor={r.confianca} /></div>
                             <div className="hidden print:block text-sm font-bold">{t('app.diagnosis.confidenceBar', { valor: r.confianca })}</div>

@@ -51,6 +51,7 @@ frontend/src-tauri/WixTools/
 *.deb
 *.dmg
 *.AppImage
+frontend/src-tauri/bin/
 
 # ── Logs ─────────────────────────────────────────────────────────────────────
 *.log

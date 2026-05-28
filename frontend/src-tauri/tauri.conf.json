@@ -12,7 +12,12 @@
   },
   "tauri": {
     "allowlist": {
-      "all": false
+      "all": false,
+      "shell": {
+        "all": false,
+        "execute": true,
+        "sidecar": true
+      }
     },
     "bundle": {
       "active": true,
@@ -21,7 +26,9 @@
       "deb": {
         "depends": []
       },
-      "externalBin": [],
+      "externalBin": [
+        "bin/retai_backend"
+      ],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -29,7 +36,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "com.retai.app",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
@@ -55,11 +62,20 @@
     },
     "windows": [
       {
-        "fullscreen": false,
-        "height": 600,
-        "resizable": true,
         "title": "RetAI",
-        "width": 800
+        "width": 1024,
+        "height": 768,
+        "label": "main",
+        "visible": false
+      },
+      {
+        "width": 400,
+        "height": 300,
+        "decorations": false,
+        "url": "splash.html",
+        "label": "splashscreen",
+        "center": true,
+        "resizable": false
       }
     ]
   }
