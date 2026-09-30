@@ -1,5 +1,7 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
 
 use std::sync::Mutex;
 use tauri::api::process::{Command, CommandChild};
@@ -8,8 +10,19 @@ use tauri::{Manager, RunEvent};
 // Estrutura para armazenar o processo do backend de forma segura na memória do app
 struct BackendState(Mutex<Option<CommandChild>>);
 
+#[tauri::command]
+fn close_splashscreen(window: tauri::Window) {
+    if let Some(splashscreen) = window.get_window("splashscreen") {
+        splashscreen.close().unwrap();
+    }
+    if let Some(main_window) = window.get_window("main") {
+        main_window.show().unwrap();
+    }
+}
+
 fn main() {
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![close_splashscreen])
         .setup(|app| {
             let mut env_map = std::collections::HashMap::new();
 
@@ -32,7 +45,7 @@ fn main() {
             }
 
             // Inicia o sidecar de forma assíncrona/background
-            match Command::new_sidecar("api") {
+            match Command::new_sidecar("retai_backend") {
                 Ok(command) => {
                     match command.envs(env_map).spawn() {
                         Ok((_rx, child)) => {

@@ -14,9 +14,14 @@ from security import get_medico_atual
 from i18n import t
 from ml_engine import analisar_imagem
 from services.pdf_export import gerar_pdfs_diagnosticos
+from pathlib import Path
 
 router = APIRouter(prefix="/api/diagnosticos", tags=["Diagnósticos"])
-IMG_DIR = os.getenv("IMG_DIR", "./imagens_salvas")
+USER_HOME = Path.home()
+APP_DATA_DIR = USER_HOME / ".retai_data"
+IMG_DIR = str(APP_DATA_DIR / "imagens_salvas")
+
+os.makedirs(IMG_DIR, exist_ok=True)
 
 def processar_diagnostico_worker(diagnostico_id: int):
     db = SessionLocal()

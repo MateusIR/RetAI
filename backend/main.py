@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from routers import auth, medicos, diagnosticos
 
 # ── App ───────────────────────────────────────────────────────────────────────
-app = FastAPI(title="RetAI API", version="1.0.0")
+app = FastAPI(title="RetAI API", version="1.1.0")
 
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS", 
