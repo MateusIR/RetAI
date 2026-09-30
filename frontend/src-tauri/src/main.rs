@@ -80,7 +80,17 @@ fn main() {
                         let _ = child.kill();
                     }
                 }
+                
+                #[cfg(target_os = "windows")]
+                {
+                    // O asterisco (*) garante que vai pegar a casca e o subprocesso
+                    std::process::Command::new("taskkill")
+                        .args(["/F", "/T", "/IM", "retai_backend*"])
+                        .spawn()
+                        .ok();
+                }
             }
             _ => {}
         });
 }
+
