@@ -18,10 +18,24 @@ export default function Header({ isAuthenticated, user, tab, setTab, setRefreshK
   const { t, i18n } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [isBackendUp, setIsBackendUp] = useState<boolean>(true);
 
   useEffect(() => {
     const savedLang = localStorage.getItem('lang');
     if (savedLang && savedLang !== i18n.language) i18n.changeLanguage(savedLang);
+
+    // Ping Backend
+    const pingBackend = () => {
+      fetch('http://localhost:8000/health')
+        .then(res => {
+          setIsBackendUp(res.ok);
+        })
+        .catch(() => setIsBackendUp(false));
+    };
+    
+    pingBackend(); // Pinga imediatamente
+    const interval = setInterval(pingBackend, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const changeLanguage = (lang: string) => {
@@ -39,6 +53,11 @@ export default function Header({ isAuthenticated, user, tab, setTab, setRefreshK
 
   return (
     <header className="border-b border-surface-4 bg-surface-1/80 backdrop-blur-md sticky top-0 z-40 print:hidden">
+      {!isBackendUp && (
+        <div className="bg-red-500 text-white text-[11px] font-bold py-1.5 text-center uppercase tracking-widest animate-pulse">
+          Aviso: A conexão com o motor de IA foi perdida! A aplicação pode não funcionar corretamente.
+        </div>
+      )}
       <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
         
         {/* Logo Otimizada */}
@@ -46,6 +65,12 @@ export default function Header({ isAuthenticated, user, tab, setTab, setRefreshK
           <div className="relative w-10 h-10 flex items-center justify-center">
             <div className="absolute inset-0 bg-accent/40 blur-lg rounded-full"></div>
             <img src={logoApp} alt="Logo" className="relative w-9 h-9 object-contain drop-shadow-md z-10" />
+            
+            {/* Indicador de Status */}
+            <div 
+              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-surface-1 z-20 transition-colors duration-300 ${isBackendUp ? 'bg-green-500' : 'bg-red-500'}`} 
+              title={isBackendUp ? "Motor IA Conectado" : "Motor IA Desconectado"}
+            ></div>
           </div>
           <div>
             <h1 className="font-display text-lg font-bold text-white leading-none">{t('app.title')}</h1>
