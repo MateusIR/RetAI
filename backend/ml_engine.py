@@ -101,13 +101,16 @@ def analisar_imagem(caminho_arquivo: str, modelo_escolhido: str = "multiplo") ->
         for i, class_info in enumerate(CLASSES):
             if i == idx_detachment:
                 prob = probs_eff[i]
+                include = prob >= THRESHOLD
             else:
                 if has_detachment:
                     prob = probs_eff[i]
+                    include = prob >= THRESHOLD
                 else:
                     prob = (probs_eff[i] + probs_conv_nd[i]) / 2.0
+                    include = (probs_eff[i] >= THRESHOLD) or (probs_conv_nd[i] >= THRESHOLD)
             
-            if prob >= THRESHOLD:
+            if include:
                 resultados_finais.append({
                     "tag": class_info["tag"],
                     "doenca": class_info["nome"],

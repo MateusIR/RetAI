@@ -1,53 +1,87 @@
-# OculAI — Diagnóstico Ocular (MVP)
+# RetAI — Diagnóstico Ocular com Inteligência Artificial
 
-Sistema desktop para análise de doenças oculares a partir de imagens de fundoscopia.
+Sistema desktop avançado para análise de doenças oculares a partir de imagens de fundoscopia, construído com arquitetura cliente-servidor (Desktop UI + API Local).
 
-## Stack
+## 🚀 Funcionalidades
+
+### Frontend (Desktop App)
+- **Interface Moderna:** Desenvolvida em React, TypeScript e Tailwind CSS, projetada para rodar de forma nativa e segura com Tauri.
+- **Autenticação e Gestão de Usuários:** Sistema de login seguro, suporte a recuperação de senha e gestão de permissões (Administradores vs. Médicos).
+- **Internacionalização (i18n):** Suporte nativo a múltiplos idiomas.
+- **Gerenciamento de Diagnósticos:**
+  - Criação de novos diagnósticos com upload e processamento de múltiplas imagens (olho esquerdo/direito).
+  - Listagem de diagnósticos anteriores com filtros e barra de confiança (confidence bar) nos resultados.
+- **Exportação:** Geração e exportação detalhada de diagnósticos em PDF para entrega ao paciente.
+- **Proteção contra Perda de Dados:** Prevenção de fechamento acidental da aplicação enquanto modelos de IA processam diagnósticos em segundo plano.
+
+### Backend (API & IA)
+- **API Robusta:** Construída com FastAPI e Python, gerenciando filas de processamento assíncrono (Background Tasks).
+- **Integração de Modelos de IA:**
+  - Suporte a modelos de ponta baseados em PyTorch e timm (EfficientNet, ConvNeXt).
+  - Suporte a fusão e combinação de predições de múltiplos modelos (Ensemble) para maior precisão, especificamente calibrados.
+- **Banco de Dados Local:** Gerenciamento seguro via SQLite + SQLAlchemy.
+- **Segurança:** Hashes de senha, verificação de contas e geração/validação de tokens JWT nativos da aplicação.
+
+## 📋 Regras de Negócios
+
+1. **Perfis de Acesso:**
+   - **SuperAdmin:** Possui privilégios para gerenciar (aprovar/remover e resetar senhas) de outros médicos/usuários na plataforma.
+   - **Médico/Usuário Padrão:** Só pode visualizar, criar e exportar os diagnósticos e pacientes associados a ele mesmo.
+2. **Ciclo de Vida do Diagnóstico:**
+   - Ao criar um diagnóstico, seu status é marcado inicialmente como `PROCESSANDO`.
+   - O processamento da imagem é delegado a filas assíncronas no backend, permitindo que a interface continue responsiva.
+   - O status é atualizado com as predições (ou erro) na finalização, salvando e carimbando a versão exata do modelo de IA que gerou o resultado.
+3. **Auditoria e Segurança Médica:**
+   - O sistema armazena a data/hora exata de criação, data/hora de finalização e a versão da IA (`modelo_versao`).
+   - Imagens são salvas localmente no disco (nunca como BLOBs pesados no banco de dados) e mapeadas por caminhos persistentes, garantindo leveza e backup fácil do banco SQLite.
+4. **Isenção de Responsabilidade Diagnóstica:**
+   - O software opera explicitamente como *auxílio diagnóstico experimental*. Resultados gerados pela IA não substituem, em nenhuma hipótese, a avaliação e confirmação de um médico oftalmologista habilitado.
+
+## 💻 Stack Tecnológico
 
 | Camada | Tecnologia |
 |---|---|
-| Desktop UI | Tauri + React + TypeScript + Tailwind CSS |
-| Backend API | Python + FastAPI |
-| Banco de dados | SQLite (via SQLAlchemy) |
-| IA (Produção) | PyTorch — EfficientNet / ResNet / ViT |
-| IA (MVP Mock) | Simulação com `time.sleep` + `random` |
+| **Desktop UI** | Tauri + React + TypeScript + Vite + Tailwind CSS |
+| **Backend API** | Python 3.11+ + FastAPI |
+| **Banco de Dados** | SQLite (via SQLAlchemy) |
+| **Modelos de IA** | PyTorch (timm: EfficientNetV2 / ConvNeXtV2) |
+| **Geração de PDF** | ReportLab (Backend Python) |
 
-## Estrutura do projeto
+## 📁 Estrutura do Projeto
 
-```
-meu-app-diagnostico/
+```text
+RetAI/
 ├── backend/
-│   ├── main.py           # FastAPI — rotas, fila de background tasks
-│   ├── models.py         # SQLAlchemy — Paciente, Diagnostico, Imagem, Resultado
-│   ├── ml_engine.py      # Motor de IA (mock → substituir pelo modelo real)
-│   ├── requirements.txt
-│   ├── start_backend.sh  # Script de inicialização
-│   └── imagens_salvas/   # Gerado automaticamente
+│   ├── main.py           # Ponto de entrada FastAPI, inicialização
+│   ├── models.py         # Definição das entidades do Banco (Paciente, Medico, Diagnostico...)
+│   ├── ml_engine.py      # Core de IA (Carregamento de pesos PyTorch, Inference, Mock)
+│   ├── services/         # Regras de negócio especializadas (ex: pdf_export.py)
+│   ├── routers/          # Endpoints segregados (auth, diagnosticos, medicos)
+│   ├── iaModels/         # Diretório para armazenamento dos pesos de rede neural (.pth)
+│   └── start_backend.sh  # Script de inicialização Unix/Mac
 └── frontend/
+    ├── src-tauri/        # Configuração da shell do Tauri (Rust) e compilação
     ├── src/
-    │   ├── App.tsx                     # Navegação principal + layout
-    │   ├── api.ts                      # Camada de serviço HTTP
-    │   ├── index.css                   # Tema escuro + classes utilitárias
-    │   └── components/
-    │       ├── TelaLista.tsx           # Lista de diagnósticos + filtros
-    │       ├── TelaNovo.tsx            # Formulário + upload de imagens
-    │       └── ModalDetalhe.tsx        # Resultados com barra de confiança
-    ├── index.html
-    ├── package.json
-    ├── vite.config.ts
-    └── tailwind.config.js
+    │   ├── App.tsx       # Navegação, controle de Sessão Global/i18n e Hooks de Fechamento Seguro
+    │   ├── api.ts        # Camada de comunicação HTTP
+    │   ├── components/   # Views e Modais (TelaLista, TelaAuth, TelaNovo, etc.)
+    │   ├── locales/      # Dicionários de tradução (i18n)
+    │   └── index.css     # Estilos globais e setup Tailwind
+    └── vite.config.ts    # Configuração de bundling
 ```
 
-## Pré-requisitos
+## ⚙️ Pré-requisitos
 
-- **Python 3.11**
-- **Node.js 18+**
-- **Rust** (para compilar o app Tauri) — instale via https://rustup.rs
-- **Tauri CLI** — `cargo install tauri-cli` (ou via npm)
+- **Python 3.11** ou superior
+- **Node.js 18+** e npm
+- **Rust** (para compilar o contêiner Desktop Tauri) — instale via [rustup.rs](https://rustup.rs)
+- **Tauri CLI** — (`npm install -g @tauri-apps/cli` ou via cargo)
 
-## Como rodar (desenvolvimento)
+## 🛠️ Como rodar (Desenvolvimento)
 
-### 1. Backend Python
+### 1. Backend (Python + FastAPI)
+
+Abra o terminal na raiz do projeto:
 
 ```bash
 cd backend
@@ -55,88 +89,45 @@ cd backend
 # Opção A: Script automático (Linux/macOS)
 bash start_backend.sh
 
-# Opção B: Manual
+# Opção B: Instalação Manual
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate        # No Windows use: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
+- A API principal responderá em: `http://localhost:8000`
+- Documentação OpenAPI/Swagger interativa: `http://localhost:8000/docs`
 
-A API ficará disponível em: http://localhost:8000
-Documentação interativa: http://localhost:8000/docs
+### 2. App Desktop (Tauri + React)
 
-### 2. Frontend (modo web — desenvolvimento rápido)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Acesse: http://localhost:1420
-
-### 3. App Desktop (Tauri)
+Abra uma **nova janela de terminal**, mantendo o backend rodando, e inicie o frontend:
 
 ```bash
 cd frontend
 npm install
 npm run tauri dev
 ```
+*(Para desenvolver puramente via Web sem os bindings Desktop temporariamente: `npm run dev` na porta 1420).*
 
-> Requer Rust e Tauri CLI instalados. Veja: https://tauri.app/v1/guides/getting-started/prerequisites
-
-## Build para distribuição
+## 📦 Build para Distribuição (Produção)
 
 ```bash
-# Backend: empacotar com PyInstaller
-pip install pyinstaller
+# 1. Backend: Compilar em binário standalone usando PyInstaller
 cd backend
+pip install pyinstaller
 pyinstaller --onefile main.py
 
-# Frontend (Tauri):
+# 2. Frontend: Gerar instalador nativo Desktop com Tauri
 cd frontend
 npm run tauri build
-# Gera instalador em: src-tauri/target/release/bundle/
+# Os instaladores otimizados (DMG, MSI, AppImage) aparecerão em: src-tauri/target/release/bundle/
 ```
 
-## Substituindo o Mock pelo modelo real
+## 🧠 Utilizando os Modelos Reais de IA
 
-Edite `backend/ml_engine.py` e descomente o bloco de produção:
+O sistema possui uma arquitetura _fail-safe_ que, caso não encontre os pesos da rede neural (`.pth`), inicializa um módulo de **Mock**. O Mock injeta _delays_ para simular inferência em GPU e devolve classificações simuladas para facilitar os testes da UI.
 
-1. Coloque o arquivo do modelo em `backend/modelo_ocular.pt`
-2. Ajuste `NUM_CLASSES` e a lista `CLASSES` para seu modelo
-3. Descomente as importações e a função `analisar_imagem` real
-4. Comente ou remova a versão mock
-
-### Modelos recomendados (BRSET / IDRiD)
-
-```python
-# EfficientNet-B3
-model = models.efficientnet_b3(pretrained=False)
-model.classifier[1] = torch.nn.Linear(model.classifier[1].in_features, NUM_CLASSES)
-
-# ResNet-50
-model = models.resnet50(pretrained=False)
-model.fc = torch.nn.Linear(model.fc.in_features, NUM_CLASSES)
-```
-
-## Variáveis de ambiente
-
-| Variável | Padrão | Descrição |
-|---|---|---|
-| `DB_PATH` | `./diagnosticos_app.db` | Caminho do banco SQLite |
-| `IMG_DIR` | `./imagens_salvas` | Diretório para armazenar imagens |
-| `VITE_API_URL` | `http://localhost:8000` | URL da API (frontend) |
-
-## Auditoria
-
-Cada diagnóstico registra:
-- Data/hora de criação e finalização
-- Versão do modelo utilizado (`modelo_versao`)
-- Imagens originais salvas em disco (nunca no banco)
-- Todos os resultados com confiança por olho analisado
-
-## Aviso legal
-
-Este software é um auxílio diagnóstico experimental.
-Os resultados **não substituem** a avaliação de um oftalmologista habilitado.
+Para ativar a inferência real (PyTorch/timm):
+1. Adquira os arquivos de pesos finetunados (Ex: `Finetune_EfficientNetV2-full.pth`, `Finetune_ConvNeXtV2.pth`, etc.).
+2. Cole-os dentro da pasta `backend/iaModels/`.
+3. Reinicie a aplicação backend. O script `ml_engine.py` reconhecerá automaticamente a existência dos pesos, montará as arquiteturas necessárias e utilizará processamento acelerado (CUDA) se disponível na máquina host.

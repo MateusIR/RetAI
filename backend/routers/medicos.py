@@ -83,6 +83,8 @@ def listar_medicos(db: Session = Depends(get_db), current_user: Medico = Depends
 def editar_medico(medico_id: int, req: MedicoUpdate, db: Session = Depends(get_db), current_user: Medico = Depends(get_medico_atual), lang: str = Query("pt_BR")):
     if not current_user.is_superadmin and current_user.id != medico_id:
         raise HTTPException(status_code=403, detail=t("Não autorizado.", lang))
+    if not current_user.verificado and not current_user.is_superadmin and req.crm != current_user.crm:
+        raise HTTPException(status_code=403, detail=t("Usuários não verificados não podem alterar o CRM.", lang))
     medico = db.query(Medico).filter(Medico.id == medico_id).first()
     if not medico:
         raise HTTPException(status_code=404, detail=t("Médico não encontrado.", lang))

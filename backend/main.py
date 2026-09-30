@@ -8,7 +8,10 @@ from routers import auth, medicos, diagnosticos
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="RetAI API", version="1.0.0")
 
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:1420").split(",")
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:1420,tauri://localhost,https://tauri.localhost,http://localhost:8000,http://127.0.0.1:8000"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -26,6 +29,10 @@ app.mount("/imagens_salvas", StaticFiles(directory=IMG_DIR), name="imagens_salva
 app.include_router(auth.router)
 app.include_router(medicos.router)
 app.include_router(diagnosticos.router)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn

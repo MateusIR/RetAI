@@ -11,6 +11,8 @@ struct BackendState(Mutex<Option<CommandChild>>);
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
+            let mut env_map = std::collections::HashMap::new();
+
             // Obter o diretório de dados do aplicativo OS-specific (garante permissão de escrita)
             if let Some(app_data_dir) = app.path_resolver().app_data_dir() {
                 // Cria a pasta de dados do app caso não exista
@@ -22,17 +24,17 @@ fn main() {
                 
                 // Injeta no ambiente para o processo filho Python herdar
                 if let Some(db_str) = db_path.to_str() {
-                    std::env::set_var("DB_PATH", db_str);
+                    env_map.insert("DB_PATH".into(), db_str.into());
                 }
                 if let Some(img_str) = img_dir.to_str() {
-                    std::env::set_var("IMG_DIR", img_str);
+                    env_map.insert("IMG_DIR".into(), img_str.into());
                 }
             }
 
             // Inicia o sidecar de forma assíncrona/background
             match Command::new_sidecar("api") {
                 Ok(command) => {
-                    match command.spawn() {
+                    match command.envs(env_map).spawn() {
                         Ok((_rx, child)) => {
                             // Salva a referência do processo filho no estado do app
                             app.manage(BackendState(Mutex::new(Some(child))));
@@ -42,6 +44,16 @@ fn main() {
                 }
                 Err(e) => eprintln!("Erro ao criar comando sidecar: {}", e),
             }
+
+            // Set larger default window size on macOS
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_window("main") {
+                let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                    width: 1024.0,
+                    height: 768.0,
+                }));
+            }
+
             Ok(())
         })
         .build(tauri::generate_context!())

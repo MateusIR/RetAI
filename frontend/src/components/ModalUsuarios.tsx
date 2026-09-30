@@ -18,6 +18,7 @@ export default function ModalUsuarios({ onClose, currentUser, showAlert, showCon
   const [editForm, setEditForm] = useState({ nome: "", crm: "", email: "" });
   const [resetUserId, setResetUserId] = useState<number | null>(null);
   const [novaSenhaAdmin, setNovaSenhaAdmin] = useState("");
+  const [confirmarNovaSenhaAdmin, setConfirmarNovaSenhaAdmin] = useState("");
   const [userToPromote, setUserToPromote] = useState<number | null>(null);
 
   const loadUsers = async () => {
@@ -51,6 +52,10 @@ export default function ModalUsuarios({ onClose, currentUser, showAlert, showCon
       await showAlert(t('app.login.errors.shortPassword'), t('app.login.errors.shortPassword'), 'warning');
       return;
     }
+    if (novaSenhaAdmin !== confirmarNovaSenhaAdmin) {
+      await showAlert("As senhas não coincidem", "As senhas não coincidem.", 'warning');
+      return;
+    }
     try {
       const res = await fetch(`http://localhost:8000/api/medicos/${id}/resetar-senha-admin`, {
         method: "POST",
@@ -68,6 +73,7 @@ export default function ModalUsuarios({ onClose, currentUser, showAlert, showCon
       await showAlert(t('app.error'), t('app.login.success.adminResetDone'), 'info');
       setResetUserId(null);
       setNovaSenhaAdmin("");
+      setConfirmarNovaSenhaAdmin("");
       loadUsers();
     } catch {
       await showAlert(t('app.error'), "Não foi possível conectar com o servidor.", 'danger');
@@ -85,17 +91,18 @@ export default function ModalUsuarios({ onClose, currentUser, showAlert, showCon
               {editUserId === u.id ? (
                 <div className="flex gap-2">
                   <input className="input-field py-1 text-sm flex-1" value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: e.target.value })} placeholder={t('app.name')} />
-                  <input className="input-field py-1 text-sm w-32" value={editForm.crm} onChange={e => setEditForm({ ...editForm, crm: e.target.value })} placeholder="CRM" />
+                  <input className="input-field py-1 text-sm w-32 disabled:opacity-50 disabled:cursor-not-allowed" disabled={!u.verificado && !currentUser?.is_superadmin} value={editForm.crm} onChange={e => setEditForm({ ...editForm, crm: e.target.value })} placeholder="CRM" />
                   <input className="input-field py-1 text-sm flex-1" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="E-mail" />
                   <button onClick={() => handleSaveEdit(u.id)} className="btn-primary py-1 px-3 text-xs">{t('app.userManagement.saveEdit')}</button>
                   <button onClick={() => setEditUserId(null)} className="btn-ghost py-1 px-3 text-xs">{t('app.userManagement.cancelEdit')}</button>
                 </div>
               ) : resetUserId === u.id ? (
-                <div className="flex gap-2 items-center">
-                  <span className="text-sm font-medium text-white flex-1">{t('app.userManagement.newPasswordFor', { name: u.nome })}</span>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <span className="text-sm font-medium text-white w-full">{t('app.userManagement.newPasswordFor', { name: u.nome })}</span>
                   <input type="password" className="input-field py-1 text-sm flex-1" value={novaSenhaAdmin} onChange={e => setNovaSenhaAdmin(e.target.value)} placeholder={t('app.userManagement.passwordPlaceholder')} />
+                  <input type="password" className="input-field py-1 text-sm flex-1" value={confirmarNovaSenhaAdmin} onChange={e => setConfirmarNovaSenhaAdmin(e.target.value)} placeholder="Confirmar Senha" />
                   <button onClick={() => handleExecutarReset(u.id)} className="btn-primary py-1 px-3 text-xs bg-amber-500 hover:bg-amber-600 shadow-amber-500/20 text-white">{t('app.userManagement.savePassword')}</button>
-                  <button onClick={() => { setResetUserId(null); setNovaSenhaAdmin("") }} className="btn-ghost py-1 px-3 text-xs">{t('app.userManagement.cancelReset')}</button>
+                  <button onClick={() => { setResetUserId(null); setNovaSenhaAdmin(""); setConfirmarNovaSenhaAdmin(""); }} className="btn-ghost py-1 px-3 text-xs">{t('app.userManagement.cancelReset')}</button>
                 </div>
               ) : (
                 <div className="flex justify-between items-center">

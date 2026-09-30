@@ -26,6 +26,20 @@ export default function App() {
   const [modalUsuarios, setModalUsuarios] = useState(false);
   const [modalSobre, setModalSobre] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [backendReady, setBackendReady] = useState(false);
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/health");
+        if (res.ok) setBackendReady(true);
+        else setTimeout(checkHealth, 1000);
+      } catch {
+        setTimeout(checkHealth, 1000);
+      }
+    };
+    checkHealth();
+  }, []);
 
   // Manipulação de segurança de janelas para Tauri
   const isProcessingRef = useRef(isProcessing);
@@ -61,6 +75,16 @@ export default function App() {
     }
     logout();
   };
+
+  if (!backendReady) {
+    return (
+      <div className="min-h-screen bg-surface-0 flex flex-col items-center justify-center text-primary">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <h2 className="mt-4 text-xl font-semibold">Iniciando Motor de IA...</h2>
+        <p className="text-surface-600 mt-2">Isso pode levar alguns segundos na primeira inicialização.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface-0 flex flex-col">

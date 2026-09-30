@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import logoApp from "../assets/logo.png";
 
 type AuthMode = "login" | "register" | "register_unverified" | "forgot" | "admin_self_reset";
 
@@ -23,6 +24,7 @@ export default function TelaAuth({ onLogin }: Props) {
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [crmNumero, setCrmNumero] = useState("");
@@ -46,7 +48,7 @@ export default function TelaAuth({ onLogin }: Props) {
 
   const changeMode = (newMode: AuthMode) => {
     setMode(newMode);
-    setError(""); setSuccessMsg(""); setSenha("");
+    setError(""); setSuccessMsg(""); setSenha(""); setConfirmarSenha("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +67,7 @@ export default function TelaAuth({ onLogin }: Props) {
     
     if (mode === "register" || mode === "register_unverified" || mode === "admin_self_reset") {
       if (senha.length < 6) return setError(t("app.login.errors.shortPassword"));
+      if (senha !== confirmarSenha) return setError(t("As senhas não coincidem."));
     }
 
     setLoading(true);
@@ -164,11 +167,9 @@ export default function TelaAuth({ onLogin }: Props) {
 
       <div className="card w-full max-w-md p-8 animate-fade-in shadow-2xl border-surface-4">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 mx-auto rounded-xl bg-gradient-to-br from-accent to-teal-accent flex items-center justify-center shadow-lg shadow-accent/25 mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+          <div className="relative w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <div className="absolute inset-0 bg-accent/40 blur-xl rounded-full"></div>
+            <img src={logoApp} alt="Logo" className="relative w-14 h-14 object-contain drop-shadow-lg z-10" />
           </div>
           <h1 className="font-display text-2xl font-bold text-white">{t("app.title")}</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -232,6 +233,16 @@ export default function TelaAuth({ onLogin }: Props) {
                   {showPassword ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
                 </button>
               </div>
+
+              {(mode === "register" || mode === "register_unverified" || mode === "admin_self_reset") && (
+                <div className="mt-4">
+                  <label className="label">{t("Confirmar Senha")}</label>
+                  <div className="relative mt-1">
+                    <input required type={showPassword ? "text" : "password"} className="input-field pr-10 [&::-ms-reveal]:hidden [&::-webkit-credentials-auto-fill-button]:hidden" placeholder={t("Confirmar Senha")} maxLength={72} value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
               {(mode === "register" || mode === "register_unverified" || mode === "admin_self_reset") && senha.length > 0 && (
                 <div className="mt-2 flex items-center gap-2 animate-fade-in">
                   <div className="flex-1 flex gap-1 h-1.5">
