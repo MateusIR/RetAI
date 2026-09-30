@@ -123,7 +123,7 @@ export async function fetchDiagnostico(id: number): Promise<DiagnosticoDetalhe> 
 export async function criarDiagnostico(payload: {
   nome: string; idade: number; sexo: string; cpf?: string;
   tipo_od: boolean; tipo_oe: boolean;
-  file_od?: File; file_oe?: File; modelo: 'ConvNextV2' | 'EfficientNetV2';
+  file_od?: File; file_oe?: File; modelo: 'multiplo' | 'convnext' | 'efficientnet';
 }) {
   const form = new FormData();
   form.append("nome", payload.nome);

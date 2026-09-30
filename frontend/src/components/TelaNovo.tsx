@@ -16,7 +16,7 @@ interface FormState {
   oe: boolean
   fileOd: File | null
   fileOe: File | null
-  modelo: 'ConvNextV2' | 'EfficientNetV2' // <- Novo campo
+  modelo: 'multiplo' | 'convnext' | 'efficientnet'
 }
 
 const INITIAL: FormState = {
@@ -28,7 +28,7 @@ const INITIAL: FormState = {
   oe: false,
   fileOd: null,
   fileOe: null,
-  modelo: 'ConvNextV2',
+  modelo: 'multiplo',
 }
 
 function RequiredMark() {
@@ -209,13 +209,14 @@ const handleSubmit = async () => {
             <select 
               className="input-field w-full bg-surface-2 text-white border border-surface-4 rounded-lg p-2.5"
               value={form.modelo} 
-              onChange={e => setField('modelo', e.target.value as 'ConvNextV2' | 'EfficientNetV2')}
+              onChange={e => setField('modelo', e.target.value as 'multiplo' | 'convnext' | 'efficientnet')}
             >
-              <option value="ConvNextV2">{t('app.modelConvnextLabel')}</option>
-              <option value="EfficientNetV2">{t('app.modelEfficientLabel')}</option>
+              <option value="multiplo">{t('app.modelMultiploLabel')}</option>
+              <option value="convnext">{t('app.modelConvnextLabel')}</option>
+              <option value="efficientnet">{t('app.modelEfficientLabel')}</option>
             </select>
             <p className="text-xs text-slate-400 italic mt-1">
-              {t('app.modelPreferenceWarning')}
+              {form.modelo === 'multiplo' ? t('app.modelPreferenceWarningMultiplo') : t('app.modelPreferenceWarning')}
             </p>
           </div>
         </section>

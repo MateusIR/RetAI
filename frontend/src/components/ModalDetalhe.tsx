@@ -223,7 +223,7 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
 
                 <div className="pt-3 border-t border-surface-4 flex justify-between items-end text-xs text-slate-500 font-mono print:border-black print:text-gray-600 mt-6">
                   <div className="flex flex-col gap-1">
-                    <span>{t('app.model')}: {data.modelo_versao}</span>
+                    <span>{t('app.model')}: {data.modelo_versao === 'multiplo' ? 'Múltiplo' : data.modelo_versao === 'efficientnet' ? 'EfficientNet' : data.modelo_versao === 'convnext' ? 'ConvNeXt' : data.modelo_versao}</span>
                     {data.cpf && <span>CPF: {formatarCPF(data.cpf)}</span>}
                   </div>
                   <span>{t('app.idDiagnosis')}: #{data.id}</span>

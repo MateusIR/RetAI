@@ -29,9 +29,11 @@ _transforms = T.Compose([
 _modelos_carregados = {}
 
 def obter_config_modelo(nome_modelo: str):
-    if nome_modelo == "EfficientNetV2":
-        return {"timm_name": "tf_efficientnetv2_s.in21k_ft_in1k", "weights_file": "efficientnet_ocular.pth"}
-    return {"timm_name": "convnextv2_tiny.fcmae_ft_in1k", "weights_file": "convnext_ocular.pth"}
+    if nome_modelo == "efficientnet":
+        return {"timm_name": "tf_efficientnetv2_s.in21k_ft_in1k", "weights_file": "Finetune_EfficientNetV2-v10-full.pth", "num_classes": NUM_CLASSES}
+    if nome_modelo == "convnext_nd":
+        return {"timm_name": "convnextv2_tiny.fcmae_ft_in1k", "weights_file": "Finetune_ConvNeXtV2-Kfold_fold2_FULLbrsetND.pth", "num_classes": 8}
+    return {"timm_name": "convnextv2_tiny.fcmae_ft_in1k", "weights_file": "Finetune_ConvNeXtV2-Kfold_fold1_FULLbrset.pth", "num_classes": NUM_CLASSES}
 
 def carregar_modelo_ia(nome_modelo: str):
     global _modelos_carregados
@@ -42,7 +44,7 @@ def carregar_modelo_ia(nome_modelo: str):
         return _modelos_carregados[nome_modelo], os.path.exists(caminho_pesos)
         
     print(f"[IA] Inicializando arquitetura: {config['timm_name']}")
-    model = timm.create_model(config["timm_name"], pretrained=False, num_classes=NUM_CLASSES)
+    model = timm.create_model(config["timm_name"], pretrained=False, num_classes=config["num_classes"])
     
     tem_pesos = os.path.exists(caminho_pesos)
     if tem_pesos:
@@ -69,28 +71,58 @@ def _mock() -> list[dict]:
         reverse=True,
     )
 
-def analisar_imagem(caminho_arquivo: str, modelo_escolhido: str = "ConvNextV2") -> list[dict]:
+def analisar_imagem(caminho_arquivo: str, modelo_escolhido: str = "multiplo") -> list[dict]:
     if not os.path.exists(caminho_arquivo):
         raise FileNotFoundError(f"Imagem não encontrada: {caminho_arquivo}")
-
-    model, tem_pesos = carregar_modelo_ia(modelo_escolhido)
-
-    if not tem_pesos: return _mock()
 
     img = Image.open(caminho_arquivo).convert("RGB")
     tensor = _transforms(img).unsqueeze(0).to(DEVICE)
 
-    with torch.no_grad():
-        logits = model(tensor)                                          
-        probs  = torch.sigmoid(logits)[0].tolist()                      
+    def obter_probs(modelo_nome: str):
+        model, tem_pesos = carregar_modelo_ia(modelo_nome)
+        if not tem_pesos: return None
+        with torch.no_grad():
+            logits = model(tensor)                                          
+            probs  = torch.sigmoid(logits)[0].tolist()
+        return probs
 
-    resultados = []
-    for i, p in enumerate(probs):
-        if p >= THRESHOLD:
-            resultados.append({
-                "tag":       CLASSES[i]["tag"],
-                "doenca":    CLASSES[i]["nome"],
-                "confianca": round(p * 100, 2),
-            })
+    resultados_finais = []
 
-    return sorted(resultados, key=lambda x: x["confianca"], reverse=True)
+    if modelo_escolhido == "multiplo":
+        probs_eff = obter_probs("efficientnet")
+        probs_conv_nd = obter_probs("convnext_nd")
+
+        if not probs_eff or not probs_conv_nd:
+            return _mock()
+
+        idx_detachment = 8
+        has_detachment = probs_eff[idx_detachment] >= THRESHOLD
+
+        for i, class_info in enumerate(CLASSES):
+            if i == idx_detachment:
+                prob = probs_eff[i]
+            else:
+                if has_detachment:
+                    prob = probs_eff[i]
+                else:
+                    prob = (probs_eff[i] + probs_conv_nd[i]) / 2.0
+            
+            if prob >= THRESHOLD:
+                resultados_finais.append({
+                    "tag": class_info["tag"],
+                    "doenca": class_info["nome"],
+                    "confianca": round(prob * 100, 2),
+                })
+    else:
+        probs = obter_probs(modelo_escolhido)
+        if not probs: return _mock()
+
+        for i, p in enumerate(probs):
+            if p >= THRESHOLD:
+                resultados_finais.append({
+                    "tag": CLASSES[i]["tag"],
+                    "doenca": CLASSES[i]["nome"],
+                    "confianca": round(p * 100, 2),
+                })
+
+    return sorted(resultados_finais, key=lambda x: x["confianca"], reverse=True)

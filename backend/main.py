@@ -26,3 +26,13 @@ app.mount("/imagens_salvas", StaticFiles(directory=IMG_DIR), name="imagens_salva
 app.include_router(auth.router)
 app.include_router(medicos.router)
 app.include_router(diagnosticos.router)
+
+if __name__ == "__main__":
+    import uvicorn
+    import multiprocessing
+    
+    # Necessário para o PyInstaller no Windows não gerar processos infinitos
+    multiprocessing.freeze_support()
+    
+    # Rodar o app numa única thread principal, sem reload
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

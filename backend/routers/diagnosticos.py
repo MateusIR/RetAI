@@ -24,7 +24,7 @@ def processar_diagnostico_worker(diagnostico_id: int):
         diagnostico = db.query(Diagnostico).filter(Diagnostico.id == diagnostico_id).first()
         if not diagnostico: return
             
-        modelo_escolhido = diagnostico.modelo_versao or "ConvNextV2"
+        modelo_escolhido = diagnostico.modelo_versao or "multiplo"
         for img in diagnostico.imagens:
             try:
                 resultados_ia = analisar_imagem(img.caminho_arquivo, modelo_escolhido)
@@ -57,7 +57,7 @@ async def criar_diagnostico(
     nome: str = Form(...), idade: int = Form(...), sexo: str = Form(...),
     cpf: Optional[str] = Form(None), tipo_od: bool = Form(False), tipo_oe: bool = Form(False),
     file_od: Optional[UploadFile] = File(None), file_oe: Optional[UploadFile] = File(None),
-    modelo: str = Form("convnext"), db: Session = Depends(get_db),
+    modelo: str = Form("multiplo"), db: Session = Depends(get_db),
     medico_atual: Medico = Depends(get_medico_atual), lang: str = Query("pt_BR"),
 ):
     if not tipo_od and not tipo_oe:
