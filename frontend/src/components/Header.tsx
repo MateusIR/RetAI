@@ -55,7 +55,7 @@ export default function Header({ isAuthenticated, user, tab, setTab, setRefreshK
     <header className="border-b border-surface-4 bg-surface-1/80 backdrop-blur-md sticky top-0 z-40 print:hidden">
       {!isBackendUp && (
         <div className="bg-red-500 text-white text-[11px] font-bold py-1.5 text-center uppercase tracking-widest animate-pulse">
-          Aviso: A conexão com o motor de IA foi perdida! A aplicação pode não funcionar corretamente.
+          {t('app.backendConnectionLost')}
         </div>
       )}
       <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
