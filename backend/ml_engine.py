@@ -30,10 +30,8 @@ _modelos_carregados = {}
 
 def obter_config_modelo(nome_modelo: str):
     if nome_modelo == "efficientnet":
-        return {"timm_name": "tf_efficientnetv2_s.in21k_ft_in1k", "weights_file": "Finetune_EfficientNetV2-v10-full.pth", "num_classes": NUM_CLASSES}
-    if nome_modelo == "convnext_nd":
-        return {"timm_name": "convnextv2_tiny.fcmae_ft_in1k", "weights_file": "Finetune_ConvNeXtV2-Kfold_fold2_FULLbrsetND.pth", "num_classes": 8}
-    return {"timm_name": "convnextv2_tiny.fcmae_ft_in1k", "weights_file": "Finetune_ConvNeXtV2-Kfold_fold1_FULLbrset.pth", "num_classes": NUM_CLASSES}
+        return {"timm_name": "tf_efficientnetv2_s.in21k_ft_in1k", "weights_file": "Finetune_EfficientNetV2-FULLND-v10-fullbrset.pth", "num_classes": 8}
+    return {"timm_name": "convnextv2_tiny.fcmae_ft_in1k", "weights_file": "Finetune_ConvNeXtV2-FULLND-v10-fullbrset.pth", "num_classes": 8}
 
 def carregar_modelo_ia(nome_modelo: str):
     global _modelos_carregados
@@ -90,27 +88,14 @@ def analisar_imagem(caminho_arquivo: str, modelo_escolhido: str = "multiplo") ->
 
     if modelo_escolhido == "multiplo":
         probs_eff = obter_probs("efficientnet")
-        probs_conv_nd = obter_probs("convnext_nd")
+        probs_conv = obter_probs("convnext")
 
-        if not probs_eff or not probs_conv_nd:
+        if not probs_eff or not probs_conv:
             return _mock()
 
-        idx_detachment = 8
-        has_detachment = probs_eff[idx_detachment] >= THRESHOLD
-
         for i, class_info in enumerate(CLASSES):
-            if i == idx_detachment:
-                prob = probs_eff[i]
-                include = prob >= THRESHOLD
-            else:
-                if has_detachment:
-                    prob = probs_eff[i]
-                    include = prob >= THRESHOLD
-                else:
-                    prob = (probs_eff[i] + probs_conv_nd[i]) / 2.0
-                    include = (probs_eff[i] >= THRESHOLD) or (probs_conv_nd[i] >= THRESHOLD)
-            
-            if include:
+            prob = (probs_eff[i] + probs_conv[i]) / 2.0
+            if probs_eff[i] >= THRESHOLD or probs_conv[i] >= THRESHOLD:
                 resultados_finais.append({
                     "tag": class_info["tag"],
                     "doenca": class_info["nome"],

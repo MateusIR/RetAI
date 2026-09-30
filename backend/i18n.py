@@ -13,7 +13,6 @@ TRANSLATIONS = {
         "myopic_fundus":         "Fundo Míope",
         "increased_cup_disc":    "Aumento da Relação C/D",
         "vascular_occlusion":    "Oclusão Vascular Retiniana",
-        "retinal_detachment":    "Descolamento de Retina",
     },
     "en": {
         # ── Autenticação / Erros gerais ──────────────────────────────────
@@ -118,7 +117,6 @@ TRANSLATIONS = {
         "myopic_fundus":        "Myopic Fundus",
         "increased_cup_disc":   "Increased Cup/Disc Ratio",
         "vascular_occlusion":   "Retinal Vascular Occlusion",
-        "retinal_detachment":   "Retinal Detachment",
     },
 }
 

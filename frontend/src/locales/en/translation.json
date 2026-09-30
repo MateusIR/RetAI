@@ -87,7 +87,7 @@
     "modelMultiploLabel": "Multiple Processing (Default)",
     "modelConvnextLabel": "ConvNeXt V2 (Individual)",
     "modelEfficientLabel": "EfficientNet V2 (Individual)",
-    "modelPreferenceWarning": "The ConvNeXt model offers higher diagnostic accuracy, while the EfficientNet is optimized to be lighter and faster.",
+    "modelPreferenceWarning": "The EfficientNet model is optimized to be lighter and faster.",
     "modelPreferenceWarningMultiplo": "Multiple processing averages the models for higher reliability.",
     "login": {
       "title": "Log in to access the system",
@@ -195,8 +195,7 @@
         "drusens": "Drusens",
         "myopic_fundus": "Myopic Fundus",
         "increased_cup_disc": "Increased Cup/Disc Ratio",
-        "vascular_occlusion": "Retinal Vascular Occlusion",
-        "retinal_detachment": "Retinal Detachment"
+        "vascular_occlusion": "Retinal Vascular Occlusion"
       }
     },
     "diagnosis": {

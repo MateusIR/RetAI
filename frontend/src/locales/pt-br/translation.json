@@ -87,7 +87,7 @@
     "modelMultiploLabel": "Processamento Múltiplo (Padrão)",
     "modelConvnextLabel": "ConvNeXt V2 (Individual)",
     "modelEfficientLabel": "EfficientNet V2 (Individual)",
-    "modelPreferenceWarning": "O modelo ConvNeXt oferece maior precisão diagnóstica, enquanto o EfficientNet é otimizado para ser mais leve e rápido.",
+    "modelPreferenceWarning": "O modelo EfficientNet é otimizado para ser mais leve e rápido.",
     "modelPreferenceWarningMultiplo": "O processamento múltiplo faz uma média entre os modelos para maior confiabilidade.",
     "login": {
       "title": "Faça login para acessar o sistema",
@@ -195,8 +195,7 @@
         "drusens": "Drusas",
         "myopic_fundus": "Fundo Míope",
         "increased_cup_disc": "Aumento da Relação C/D",
-        "vascular_occlusion": "Oclusão Vascular Retiniana",
-        "retinal_detachment": "Descolamento de Retina"
+        "vascular_occlusion": "Oclusão Vascular Retiniana"
       }
     },
     "diagnosis": {
