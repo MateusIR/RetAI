@@ -1,4 +1,14 @@
 import os
+import sys
+from dotenv import load_dotenv
+
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    # Executável compilado pelo PyInstaller
+    env_path = os.path.join(sys._MEIPASS, '.env')
+    load_dotenv(env_path)
+else:
+    load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
