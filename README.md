@@ -131,3 +131,13 @@ Para ativar a inferência real (PyTorch/timm):
 1. Adquira os arquivos de pesos finetunados (Ex: `Finetune_EfficientNetV2-full.pth`, `Finetune_ConvNeXtV2.pth`, etc.).
 2. Cole-os dentro da pasta `backend/iaModels/`.
 3. Reinicie a aplicação backend. O script `ml_engine.py` reconhecerá automaticamente a existência dos pesos, montará as arquiteturas necessárias e utilizará processamento acelerado (CUDA) se disponível na máquina host.
+
+
+---
+
+## ⬇️ Links e Download
+
+[📥 **Baixar o Aplicativo (Download)**](https://drive.google.com/drive/folders/1sP05Jkeo-fZW5V2MVvnPlYOBCFBatMD9?usp=sharing) | [📄 **Ler o Artigo Científico**](#)
+
+
+---

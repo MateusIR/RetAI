@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "RetAI",
-    "backendConnectionLost": "WARNING: AI ENGINE CONNECTION LOST! WE SUGGEST CLOSING AND REOPENING THE APPLICATION.",
+    "backendConnectionLost": "WARNING: AI ENGINE CONNECTION LOST! ATTEMPTING TO RESTART SERVER AUTOMATICALLY...",
     "subtitle": "Ocular Diagnosis",
     "tabDiagnostics": "Diagnostics",
     "tabNewDiagnosis": "New Diagnosis",

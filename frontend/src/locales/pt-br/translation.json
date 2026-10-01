@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "RetAI",
-    "backendConnectionLost": "AVISO: A CONEXÃO COM O MOTOR DE IA FOI PERDIDA! SUGERIMOS FECHAR E REABRIR A APLICAÇÃO.",
+    "backendConnectionLost": "AVISO: A CONEXÃO COM O MOTOR DE IA FOI PERDIDA! TENTANDO REINICIAR O SERVIDOR AUTOMATICAMENTE...",
     "subtitle": "Diagnóstico Ocular",
     "tabDiagnostics": "Diagnósticos",
     "tabNewDiagnosis": "Realizar Diagnóstico",

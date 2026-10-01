@@ -20,9 +20,58 @@ fn close_splashscreen(window: tauri::Window) {
     }
 }
 
+#[tauri::command]
+fn restart_backend(app_handle: tauri::AppHandle) -> Result<(), String> {
+    println!("Reiniciando o backend a pedido do frontend...");
+    
+    let state = app_handle.state::<BackendState>();
+    
+    // 1. Matar processo atual
+    if let Ok(mut lock) = state.inner().0.lock() {
+        if let Some(child) = lock.take() {
+            let _ = child.kill();
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("taskkill")
+            .args(["/F", "/T", "/IM", "retai_backend*"])
+            .spawn()
+            .ok();
+    }
+    
+    // Pausa para dar tempo ao S.O. de liberar as portas
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+    
+    // 2. Preparar ambiente e iniciar
+    let mut env_map = std::collections::HashMap::new();
+    if let Some(app_data_dir) = app_handle.path_resolver().app_data_dir() {
+        let db_path = app_data_dir.join("diagnosticos_app.db");
+        let img_dir = app_data_dir.join("imagens_salvas");
+        if let Some(db_str) = db_path.to_str() { env_map.insert("DB_PATH".into(), db_str.into()); }
+        if let Some(img_str) = img_dir.to_str() { env_map.insert("IMG_DIR".into(), img_str.into()); }
+    }
+    
+    match Command::new_sidecar("retai_backend") {
+        Ok(command) => {
+            match command.envs(env_map).spawn() {
+                Ok((_rx, child)) => {
+                    if let Ok(mut lock) = state.inner().0.lock() {
+                        *lock = Some(child);
+                    }
+                    Ok(())
+                }
+                Err(e) => Err(format!("Falha: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Erro: {}", e)),
+    }
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![close_splashscreen])
+        .invoke_handler(tauri::generate_handler![close_splashscreen, restart_backend])
         .setup(|app| {
             let mut env_map = std::collections::HashMap::new();
 

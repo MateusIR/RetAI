@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/tauri';
 import SeloVerificado from './ui/SeloVerificado';
 import logoApp from '../assets/logo.png';
 
@@ -19,6 +20,7 @@ export default function Header({ isAuthenticated, user, tab, setTab, setRefreshK
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const [isBackendUp, setIsBackendUp] = useState<boolean>(true);
+  const consecutiveFailures = useRef<number>(0);
 
   useEffect(() => {
     const savedLang = localStorage.getItem('lang');
@@ -28,9 +30,29 @@ export default function Header({ isAuthenticated, user, tab, setTab, setRefreshK
     const pingBackend = () => {
       fetch('http://localhost:8000/health')
         .then(res => {
-          setIsBackendUp(res.ok);
+          if (res.ok) {
+            setIsBackendUp(true);
+            consecutiveFailures.current = 0;
+          } else {
+            handleFailure();
+          }
         })
-        .catch(() => setIsBackendUp(false));
+        .catch(() => handleFailure());
+    };
+
+    const handleFailure = async () => {
+      setIsBackendUp(false);
+      consecutiveFailures.current += 1;
+      
+      // Ping a cada 5s -> 2 falhas = 10 segundos
+      if (consecutiveFailures.current >= 2) {
+        try {
+          await invoke('restart_backend');
+          consecutiveFailures.current = 0; // reseta contagem aps tentar reiniciar
+        } catch (e) {
+          console.error("Erro ao tentar reiniciar o backend via Tauri:", e);
+        }
+      }
     };
     
     pingBackend(); // Pinga imediatamente
