@@ -54,7 +54,6 @@ _UFS_VALIDAS = {
 }
 _CFM_TIMEOUT = 8.0
 _CONSULTACRM_BASE = "https://www.consultacrm.com.br/api/index.php"
-_CONSULTACRM_KEYS = [k for k in getenv("CONSULTACRM_KEYS", "").split(",") if k]
 _CRM_CACHE_MAX_SIZE = 500
 _CRM_CACHE: OrderedDict[str, dict] = OrderedDict()
 
@@ -94,7 +93,7 @@ async def _consultar_crm_com_chave(numero: str, uf: str, chave: str, lang: str) 
         return None
     return data
 
-async def validar_crm(crm: str, lang: str = "pt_BR") -> dict:
+async def validar_crm(crm: str, lang: str = "pt_BR", custom_key: str | None = None) -> dict:
     numero, uf = _parse_crm(crm, lang)
     cache_key = f"{numero}-{uf}"
     data = None
@@ -103,7 +102,11 @@ async def validar_crm(crm: str, lang: str = "pt_BR") -> dict:
         data = _CRM_CACHE[cache_key]
         _CRM_CACHE.move_to_end(cache_key)
     else:
-        for chave in _CONSULTACRM_KEYS:
+        chaves_disponiveis = [k for k in getenv("CONSULTACRM_KEYS", "").split(",") if k]
+        if custom_key:
+            chaves_disponiveis.insert(0, custom_key)
+            
+        for chave in chaves_disponiveis:
             data = await _consultar_crm_com_chave(numero, uf, chave, lang)
             if data is not None: break
 

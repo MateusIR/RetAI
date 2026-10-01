@@ -1,4 +1,4 @@
-const BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
+export const BASE = (import.meta as any).env?.VITE_API_URL ?? "http://localhost:8000";
 const TOKEN_KEY = "retai_token";
 
 const getToken = (): string | null => sessionStorage.getItem(TOKEN_KEY);

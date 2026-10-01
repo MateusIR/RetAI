@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import logoApp from "../assets/logo.png";
+import { BASE } from "../api";
 
 type AuthMode = "login" | "register" | "register_unverified" | "forgot" | "admin_self_reset";
 
@@ -21,6 +22,8 @@ export default function TelaAuth({ onLogin }: Props) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showUnverifiedWarning, setShowUnverifiedWarning] = useState(false);
+  const [showCrmKeyForm, setShowCrmKeyForm] = useState(false);
+  const [customCrmKey, setCustomCrmKey] = useState(localStorage.getItem('custom_crm_key') || "");
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -49,6 +52,7 @@ export default function TelaAuth({ onLogin }: Props) {
   const changeMode = (newMode: AuthMode) => {
     setMode(newMode);
     setError(""); setSuccessMsg(""); setSenha(""); setConfirmarSenha("");
+    setShowCrmKeyForm(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +81,7 @@ export default function TelaAuth({ onLogin }: Props) {
         formData.append("username", email.trim());
         formData.append("password", senha);
 
-        const res = await fetch(`http://localhost:8000/api/auth/login?lang=${lang}`, {
+        const res = await fetch(`${BASE}/api/auth/login?lang=${lang}`, {
           method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString(),
         });
         if (!res.ok) {
@@ -88,9 +92,9 @@ export default function TelaAuth({ onLogin }: Props) {
         onLogin(data.access_token, data.user, Date.now() + data.expires_in * 1000);
         
       } else if (mode === "register") {
-        const res = await fetch(`http://localhost:8000/api/medicos/registrar?lang=${lang}`, {
+        const res = await fetch(`${BASE}/api/medicos/registrar?lang=${lang}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), senha }),
+          body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), senha, custom_crm_key: customCrmKey || null }),
         });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
@@ -100,7 +104,7 @@ export default function TelaAuth({ onLogin }: Props) {
         changeMode("login");
         
       } else if (mode === "register_unverified") {
-        const res = await fetch(`http://localhost:8000/api/medicos/registrar-nao-verificado?lang=${lang}`, {
+        const res = await fetch(`${BASE}/api/medicos/registrar-nao-verificado?lang=${lang}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ nome, email: email.trim(), senha }),
         });
@@ -112,7 +116,7 @@ export default function TelaAuth({ onLogin }: Props) {
         changeMode("login");
         
       } else if (mode === "forgot") {
-        const res = await fetch(`http://localhost:8000/api/auth/solicitar-reset-local?lang=${lang}`, {
+        const res = await fetch(`${BASE}/api/auth/solicitar-reset-local?lang=${lang}`, {
             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim() }),
           });
         const data = await res.json().catch(() => ({}));
@@ -120,7 +124,7 @@ export default function TelaAuth({ onLogin }: Props) {
         setSuccessMsg(t("app.login.success.resetRequested"));
         
       } else if (mode === "admin_self_reset") {
-        const res = await fetch(`http://localhost:8000/api/auth/admin-self-reset?lang=${lang}`, {
+        const res = await fetch(`${BASE}/api/auth/admin-self-reset?lang=${lang}`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nome, cpf, crm: crmCompleto, email: email.trim(), nova_senha: senha }),
           });
@@ -131,13 +135,16 @@ export default function TelaAuth({ onLogin }: Props) {
       }
     } catch (err: any) {
       setError(err.message);
+      if (err.message.includes("Limite de consultas de CRM") || err.message.includes("limite")) {
+        setShowCrmKeyForm(true);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
+    <div className="flex-1 flex flex-col md:flex-row items-center justify-center p-4 gap-6">
       {/* Aviso Modal de Não Verificado */}
       {showUnverifiedWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
@@ -161,6 +168,41 @@ export default function TelaAuth({ onLogin }: Props) {
                 {t("app.login.unverifiedRegisterButton")}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCrmKeyForm && mode === "register" && (
+        <div className="card w-full max-w-md p-8 animate-slide-right shadow-2xl border border-amber-500/30 bg-surface-2 relative">
+          <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white shadow-lg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-amber-500 mb-4">{t("Limite de Consultas Atingido")}</h2>
+          <p className="text-sm text-slate-300 mb-4">
+            O sistema esgotou as chaves públicas para consulta no CRM. 
+            Para prosseguir agora, você precisará gerar sua própria chave gratuita:
+          </p>
+          <ol className="list-decimal pl-5 text-sm text-slate-400 space-y-3 mb-6">
+            <li>Acesse o site <a href="https://www.consultacrm.com.br" target="_blank" rel="noreferrer" className="text-accent underline hover:text-teal-accent transition-colors">consultacrm.com.br</a></li>
+            <li>Crie uma conta gratuita com seu email</li>
+            <li>Copie a sua <strong>Chave de API</strong> gerada no painel</li>
+            <li>Cole a chave no campo abaixo e clique em continuar</li>
+          </ol>
+          <div>
+            <label className="label text-amber-500">{t("Sua Chave de API (ConsultaCRM)")}</label>
+            <input 
+              type="text" 
+              className="input-field mb-4 focus:border-amber-500" 
+              placeholder="Ex: 9979852672"
+              value={customCrmKey} 
+              onChange={(e) => {
+                setCustomCrmKey(e.target.value);
+                localStorage.setItem('custom_crm_key', e.target.value);
+              }} 
+            />
+            <button disabled={loading || !customCrmKey} type="button" onClick={handleSubmit} className="btn-primary w-full py-3 bg-amber-500 hover:bg-amber-600 shadow-amber-500/20 disabled:bg-surface-4 disabled:text-slate-500">
+              {loading ? t("app.sending") : t("Tentar novamente com minha chave")}
+            </button>
           </div>
         </div>
       )}

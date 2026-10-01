@@ -7,6 +7,7 @@ class MedicoCreate(BaseModel):
     crm: str
     email: str
     senha: str
+    custom_crm_key: str | None = None
 
 class MedicoNaoVerificadoCreate(BaseModel):
     nome: str

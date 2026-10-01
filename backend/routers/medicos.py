@@ -23,7 +23,7 @@ async def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db), 
     if db.query(Medico).filter(Medico.crm == medico.crm).first():
         raise HTTPException(status_code=409, detail=t("Este CRM já está cadastrado.", lang))
 
-    crm_dados = await validar_crm(medico.crm, lang)
+    crm_dados = await validar_crm(medico.crm, lang, medico.custom_crm_key)
     nome_cfm = crm_dados.get("nome_cfm", "")
 
     if not nome_cfm or not validar_correspondencia_nome(medico.nome, nome_cfm):
