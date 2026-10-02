@@ -10,6 +10,41 @@ use tauri::{Manager, RunEvent};
 // Estrutura para armazenar o processo do backend de forma segura na memória do app
 struct BackendState(Mutex<Option<CommandChild>>);
 
+/// Verifica se o backend está respondendo em http://127.0.0.1:8000/health
+/// usando um request HTTP raw via TcpStream (sem dependências extras).
+fn check_backend_health() -> bool {
+    use std::io::{Read, Write};
+    use std::net::TcpStream;
+    use std::time::Duration;
+
+    let stream = TcpStream::connect_timeout(
+        &"127.0.0.1:8000".parse().unwrap(),
+        Duration::from_secs(2),
+    );
+
+    match stream {
+        Ok(mut s) => {
+            s.set_read_timeout(Some(Duration::from_secs(2))).ok();
+            s.set_write_timeout(Some(Duration::from_secs(2))).ok();
+
+            let request = "GET /health HTTP/1.1\r\nHost: 127.0.0.1:8000\r\nConnection: close\r\n\r\n";
+            if s.write_all(request.as_bytes()).is_err() {
+                return false;
+            }
+
+            let mut buf = [0u8; 512];
+            match s.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    let response = String::from_utf8_lossy(&buf[..n]);
+                    response.contains("200 OK")
+                }
+                _ => false,
+            }
+        }
+        Err(_) => false,
+    }
+}
+
 #[tauri::command]
 fn close_splashscreen(window: tauri::Window) {
     if let Some(splashscreen) = window.get_window("splashscreen") {
@@ -91,6 +126,29 @@ fn main() {
                 }));
             }
 
+            // ── Health check do backend no lado Rust ─────────────────────────
+            // No macOS, o WKWebView não executa JavaScript em janelas ocultas
+            // (visible: false), então o health check do App.tsx nunca roda.
+            // Movemos essa lógica para cá: uma thread que faz polling no
+            // backend e, quando pronto, fecha o splash e mostra a janela main.
+            let app_handle = app.handle();
+            std::thread::spawn(move || {
+                loop {
+                    if check_backend_health() {
+                        // Backend pronto! Fechar splash e mostrar janela principal.
+                        if let Some(splashscreen) = app_handle.get_window("splashscreen") {
+                            let _ = splashscreen.close();
+                        }
+                        if let Some(main_window) = app_handle.get_window("main") {
+                            let _ = main_window.show();
+                        }
+                        println!("Backend pronto — splash fechado, janela principal visível.");
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1000));
+                }
+            });
+
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -117,4 +175,5 @@ fn main() {
             _ => {}
         });
 }
+
 

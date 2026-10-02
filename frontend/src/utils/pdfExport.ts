@@ -116,3 +116,69 @@ export function gerarHTMLdoLaudo(data: DiagnosticoDetalhe, parecer: string): str
 </body>
 </html>`;
 }
+
+export async function downloadPDFs(ids: number[], filenameFallback: string = 'laudos'): Promise<void> {
+  const token = sessionStorage.getItem('retai_token');
+  const lang = localStorage.getItem('lang')?.replace('-', '_') || 'pt_BR';
+
+  const response = await fetch(`http://localhost:8000/api/diagnosticos/exportar-pdfs?lang=${lang}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ ids }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => null);
+    throw new Error(err?.detail || 'Erro ao exportar PDFs');
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const filenameMatch = disposition.match(/filename="?(.+?)"?$/);
+  const defaultFilename = filenameMatch ? filenameMatch[1] : `${filenameFallback}_${Date.now()}.pdf`;
+
+  if ((window as any).__TAURI__) {
+    const { save } = await import('@tauri-apps/api/dialog');
+    const { writeBinaryFile } = await import('@tauri-apps/api/fs');
+    
+    const filePath = await save({
+      defaultPath: defaultFilename,
+      filters: [{ name: 'Arquivo PDF', extensions: ['pdf'] }]
+    });
+    
+    if (filePath) {
+      const buffer = await blob.arrayBuffer();
+      await writeBinaryFile(filePath, new Uint8Array(buffer));
+    }
+  } else {
+    if ('showSaveFilePicker' in window) {
+      try {
+        const fileHandle = await (window as any).showSaveFilePicker({
+          suggestedName: defaultFilename,
+          types: [{
+            description: 'Arquivo PDF',
+            accept: { 'application/pdf': ['.pdf'] },
+          }],
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        throw err;
+      }
+    } else {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = defaultFilename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+  }
+}

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from 'react-i18next';
 import { appWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/tauri";
 import { useAuth } from "./useAuth";
 import { useDialog } from "./hooks/useDialog";
 
@@ -44,25 +43,9 @@ export default function App() {
   const isProcessingRef = useRef(isProcessing);
   useEffect(() => { isProcessingRef.current = isProcessing; }, [isProcessing]);
 
-  // PRIMEIRO useEffect: Tela de Splash
-  useEffect(() => {
-    if (!(window as any).__TAURI__) return;
+  // NOTA: A lógica de fechar o splash screen foi movida para o lado Rust (main.rs)
+  // porque no macOS, o WKWebView não executa JavaScript em janelas ocultas (visible: false).
 
-    const checkBackend = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/docs");
-        if (res.ok) {
-          await invoke("close_splashscreen");
-        } else {
-          setTimeout(checkBackend, 1000);
-        }
-      } catch {
-        setTimeout(checkBackend, 1000);
-      }
-    };
-
-    checkBackend();
-  }, []); // <--- Faltava essa linha para fechar o useEffect corretamente!
 
   // SEGUNDO useEffect: Prevenção de fechamento acidental
   useEffect(() => {

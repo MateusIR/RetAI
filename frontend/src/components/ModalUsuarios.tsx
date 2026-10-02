@@ -70,7 +70,7 @@ export default function ModalUsuarios({ onClose, currentUser, showAlert, showCon
         await showAlert(t('app.error'), err.detail || "Erro ao redefinir a senha.", 'danger');
         return;
       }
-      await showAlert(t('app.error'), t('app.login.success.adminResetDone'), 'info');
+      await showAlert(t('app.success', { defaultValue: 'Sucesso' }), t('app.userManagement.resetSuccess', { defaultValue: 'A senha do usuário foi redefinida com sucesso.' }), 'info');
       setResetUserId(null);
       setNovaSenhaAdmin("");
       setConfirmarNovaSenhaAdmin("");

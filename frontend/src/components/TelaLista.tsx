@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fetchDiagnosticos, excluirDiagnosticos, DiagnosticoListItem } from '../api';
+import { downloadPDFs } from '../utils/pdfExport';
 import ModalDetalhe from './ModalDetalhe';
 
 type ShowAlert   = (title: string, message: string, type?: 'info' | 'warning' | 'danger') => Promise<void>;
@@ -116,60 +117,7 @@ export default function TelaLista({ refreshKey, currentUser, setIsProcessing, sh
   const handleDownloadPDFs = async () => {
     setModalImprimir(false);
     try {
-      const token = sessionStorage.getItem('retai_token');
-      const lang = localStorage.getItem('lang')?.replace('-', '_') || 'pt_BR';
-
-      const response = await fetch(`http://localhost:8000/api/diagnosticos/exportar-pdfs?lang=${lang}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ ids: selectedIds }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => null);
-        throw new Error(err?.detail || t('app.error'));
-      }
-
-      const blob = await response.blob();
-      const disposition = response.headers.get('Content-Disposition') || '';
-      const filenameMatch = disposition.match(/filename="?(.+?)"?$/);
-      const defaultFilename = filenameMatch ? filenameMatch[1] : `laudos_${Date.now()}.pdf`;
-
-      // Tenta forçar a janela "Salvar como..." usando a File System Access API
-      if ('showSaveFilePicker' in window) {
-        try {
-          const fileHandle = await (window as any).showSaveFilePicker({
-            suggestedName: defaultFilename,
-            types: [{
-              description: 'Arquivo PDF',
-              accept: { 'application/pdf': ['.pdf'] },
-            }],
-          });
-          
-          const writable = await fileHandle.createWritable();
-          await writable.write(blob);
-          await writable.close();
-        } catch (err: any) {
-          // Se o usuário cancelar a janela de salvar, a API joga um 'AbortError'
-          if (err.name === 'AbortError') {
-            return; // Apenas sai da função sem mostrar erro se o usuário cancelou
-          }
-          throw err; // Se for outro erro, joga para o catch principal
-        }
-      } else {
-        // Fallback: Para navegadores que não suportam a API (ex: Firefox, Safari antigo)
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = defaultFilename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }
+      await downloadPDFs(selectedIds, 'laudos');
 
       await showAlert(t('app.exportPDFTitle'), t('app.exportPDFMessage', { count: selectedIds.length }), 'info');
       setSelectedIds([]);

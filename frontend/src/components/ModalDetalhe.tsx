@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchDiagnostico, atualizarParecer, DiagnosticoDetalhe } from '../api'
-import { gerarHTMLdoLaudo } from '../utils/pdfExport'
+import { gerarHTMLdoLaudo, downloadPDFs } from '../utils/pdfExport'
 
 interface Props {
   diagnosticoId: number
@@ -86,11 +86,33 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
     return cpf
   }
 
-  const gerarPDFLaudo = () => {
+  const gerarPDFLaudo = async () => {
     if (!data) return
-    const html = gerarHTMLdoLaudo(data, parecer)
-    const novaJanela = window.open('', '_blank', 'width=900,height=700')
-    if (novaJanela) { novaJanela.document.write(html); novaJanela.document.close(); }
+    
+    // Mostra um indicador de carregamento no botão
+    const btn = document.getElementById('btn-imprimir-pdf')
+    const txt = btn?.innerHTML
+    if (btn) {
+      btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> ${t('app.processing')}`
+      btn.setAttribute('disabled', 'true')
+    }
+
+    try {
+      // Se houver um parecer não salvo, garante que será salvo antes de gerar o PDF
+      if (parecer !== data.parecer && podeEditarParecer) {
+        await atualizarParecer(data.id, parecer);
+      }
+      
+      await downloadPDFs([data.id], `laudo_${data.id}`)
+    } catch (err) {
+      console.error(err)
+      alert(t('app.error'))
+    } finally {
+      if (btn && txt) {
+        btn.innerHTML = txt
+        btn.removeAttribute('disabled')
+      }
+    }
   }
 
   return (
@@ -103,7 +125,7 @@ export default function ModalDetalhe({ diagnosticoId, onClose, currentUser }: Pr
             <h2 className="font-display text-lg font-semibold text-white print:text-black">{t('app.diagnosisDetail')}</h2>
             <div className="flex gap-2 print:hidden">
               {podeGerarPDF ? (
-                <button onClick={gerarPDFLaudo} className="btn-ghost text-xs px-3 py-1.5 h-auto flex items-center gap-2">
+                <button id="btn-imprimir-pdf" onClick={gerarPDFLaudo} className="btn-ghost text-xs px-3 py-1.5 h-auto flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                   {t('app.printButton')}
                 </button>
