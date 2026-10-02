@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Iniciando RetAI</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0f172a; /* Cor slate-900 para combinar com seu dark mode */
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .title { font-size: 24px; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px;}
+    .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 30px; }
+    
+    .progress-container {
+      width: 60%;
+      height: 6px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #14b8a6; /* teal-500 */
+      border-radius: 4px;
+      transition: width 0.3s ease-in-out;
+      box-shadow: 0 0 10px rgba(20, 184, 166, 0.5);
+    }
+    
+    .status-text {
+      font-size: 11px;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: #14b8a6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <div class="title">RetAI</div>
+  <div class="subtitle">Sistema de Auxílio Diagnóstico</div>
+  
+  <div class="progress-container">
+    <div class="progress-bar" id="progress"></div>
+  </div>
+  <div class="status-text" id="status">Carregando módulos...</div>
+
+  <script>
+    const progressEl = document.getElementById('progress');
+    const statusEl = document.getElementById('status');
+    
+    // Simulate loading steps since the backend takes a few seconds to load models
+    const steps = [
+      { progress: 15, text: "Iniciando processo do servidor..." },
+      { progress: 30, text: "Carregando configurações..." },
+      { progress: 45, text: "Carregando Motor de IA..." },
+      { progress: 65, text: "Inicializando modelos PyTorch..." },
+      { progress: 85, text: "Estabelecendo conexão..." },
+      { progress: 95, text: "Quase pronto..." }
+    ];
+    
+    let currentStep = 0;
+    
+    function updateProgress() {
+      if (currentStep < steps.length) {
+        progressEl.style.width = steps[currentStep].progress + "%";
+        statusEl.innerText = steps[currentStep].text;
+        currentStep++;
+        
+        // Randomize the wait time for each step to make it feel "real" (between 600ms and 1500ms)
+        const nextTime = Math.random() * 900 + 600;
+        setTimeout(updateProgress, nextTime);
+      } else {
+        // If it takes longer, just pulse the bar at 98%
+        progressEl.style.width = "98%";
+        statusEl.innerText = "Aguardando resposta do servidor...";
+      }
+    }
+    
+    setTimeout(updateProgress, 500);
+  </script>
+</body>
+</html>
