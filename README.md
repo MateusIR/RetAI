@@ -2,7 +2,16 @@
 
 Sistema desktop avançado para análise de doenças oculares a partir de imagens de fundoscopia, construído com arquitetura cliente-servidor (Desktop UI + API Local).
 
-## 🚀 Funcionalidades
+---
+
+## ⬇️ Links e Download
+
+[📥 **Baixar o Aplicativo (Download)**](https://drive.google.com/drive/folders/1sP05Jkeo-fZW5V2MVvnPlYOBCFBatMD9?usp=sharing) | [📄 **Ler o Artigo Científico**](#)
+
+
+---
+
+## Funcionalidades
 
 ### Frontend (Desktop App)
 - **Interface Moderna:** Desenvolvida em React, TypeScript e Tailwind CSS, projetada para rodar de forma nativa e segura com Tauri.
@@ -22,7 +31,7 @@ Sistema desktop avançado para análise de doenças oculares a partir de imagens
 - **Banco de Dados Local:** Gerenciamento seguro via SQLite + SQLAlchemy.
 - **Segurança:** Hashes de senha, verificação de contas e geração/validação de tokens JWT nativos da aplicação.
 
-## 📋 Regras de Negócios
+## Regras de Negócios
 
 1. **Perfis de Acesso:**
    - **SuperAdmin:** Possui privilégios para gerenciar (aprovar/remover e resetar senhas) de outros médicos/usuários na plataforma.
@@ -37,7 +46,7 @@ Sistema desktop avançado para análise de doenças oculares a partir de imagens
 4. **Isenção de Responsabilidade Diagnóstica:**
    - O software opera explicitamente como *auxílio diagnóstico experimental*. Resultados gerados pela IA não substituem, em nenhuma hipótese, a avaliação e confirmação de um médico oftalmologista habilitado.
 
-## 💻 Stack Tecnológico
+## Stack Tecnológico
 
 | Camada | Tecnologia |
 |---|---|
@@ -47,7 +56,7 @@ Sistema desktop avançado para análise de doenças oculares a partir de imagens
 | **Modelos de IA** | PyTorch (timm: EfficientNetV2 / ConvNeXtV2) |
 | **Geração de PDF** | ReportLab (Backend Python) |
 
-## 📁 Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 RetAI/
@@ -70,14 +79,14 @@ RetAI/
     └── vite.config.ts    # Configuração de bundling
 ```
 
-## ⚙️ Pré-requisitos
+## Pré-requisitos
 
 - **Python 3.11** ou superior
 - **Node.js 18+** e npm
 - **Rust** (para compilar o contêiner Desktop Tauri) — instale via [rustup.rs](https://rustup.rs)
 - **Tauri CLI** — (`npm install -g @tauri-apps/cli` ou via cargo)
 
-## 🛠️ Como rodar (Desenvolvimento)
+## Como rodar (Desenvolvimento)
 
 ### 1. Backend (Python + FastAPI)
 
@@ -109,7 +118,7 @@ npm run tauri dev
 ```
 *(Para desenvolver puramente via Web sem os bindings Desktop temporariamente: `npm run dev` na porta 1420).*
 
-## 📦 Build para Distribuição (Produção)
+## Build para Distribuição (Produção)
 
 ```bash
 # 1. Backend: Compilar em binário standalone usando PyInstaller
@@ -123,7 +132,7 @@ npm run tauri build
 # Os instaladores otimizados (DMG, MSI, AppImage) aparecerão em: src-tauri/target/release/bundle/
 ```
 
-## 🧠 Utilizando os Modelos Reais de IA
+## Utilizando os Modelos Reais de IA
 
 O sistema possui uma arquitetura _fail-safe_ que, caso não encontre os pesos da rede neural (`.pth`), inicializa um módulo de **Mock**. O Mock injeta _delays_ para simular inferência em GPU e devolve classificações simuladas para facilitar os testes da UI.
 
@@ -133,11 +142,3 @@ Para ativar a inferência real (PyTorch/timm):
 3. Reinicie a aplicação backend. O script `ml_engine.py` reconhecerá automaticamente a existência dos pesos, montará as arquiteturas necessárias e utilizará processamento acelerado (CUDA) se disponível na máquina host.
 
 
----
-
-## ⬇️ Links e Download
-
-[📥 **Baixar o Aplicativo (Download)**](https://drive.google.com/drive/folders/1sP05Jkeo-fZW5V2MVvnPlYOBCFBatMD9?usp=sharing) | [📄 **Ler o Artigo Científico**](#)
-
-
----
