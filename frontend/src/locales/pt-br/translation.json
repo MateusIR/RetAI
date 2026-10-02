@@ -88,7 +88,7 @@
     "modelMultiploLabel": "Processamento Múltiplo (Padrão)",
     "modelConvnextLabel": "ConvNeXt V2 (Individual)",
     "modelEfficientLabel": "EfficientNet V2 (Individual)",
-    "modelPreferenceWarning": "O modelo EfficientNet é otimizado para ser mais leve e rápido.",
+    "modelPreferenceWarning": "O modelo EfficientNet é otimizado para ser mais leve e rápido, enquanto o ConvNeXt é uma opção um pouco mais abrangente.",
     "modelPreferenceWarningMultiplo": "O processamento múltiplo faz uma média entre os modelos para maior confiabilidade.",
     "login": {
       "title": "Faça login para acessar o sistema",
@@ -171,7 +171,7 @@
     },
     "aboutModal": {
   "title": "Sobre a Plataforma",
-  "version": "Diagnóstico Ocular v1.0",
+  "version": "Diagnóstico Ocular v1.1.0",
   "description": "O RetAI é uma ferramenta de triagem clínica local baseada em inteligência artificial. A plataforma analisa imagens de retinografia (fundo de olho) para auxiliar na detecção de patologias oculares, operando como uma ferramenta segura de segunda opinião para profissionais de saúde.",
   "legalWarningTitle": "Aviso de Responsabilidade Legal",
   "legalWarningText": "Os resultados apresentados por esta plataforma são estritamente sugestivos e não substituem o laudo de um médico qualificado.",

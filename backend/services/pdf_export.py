@@ -4,16 +4,24 @@ from datetime import datetime
 import os
 from i18n import t
 
+import sys
+from pathlib import Path
+
 def gerar_pdfs_diagnosticos(diagnosticos, lang="pt_BR") -> BytesIO:
+    if getattr(sys, 'frozen', False):
+        BASE_DIR = Path(sys._MEIPASS)
+    else:
+        BASE_DIR = Path(__file__).resolve().parent.parent
+
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=18)
     pdf.set_margins(15, 15, 15)
 
     # Nota: Garanta que essas fontes existam no diretório `fonts/`
-    pdf.add_font("Syne", "", "fonts/Syne-Regular.ttf", uni=True)
-    pdf.add_font("Syne", "B", "fonts/Syne-Bold.ttf", uni=True)
-    pdf.add_font("Syne", "BI", "fonts/Syne-SemiBold.ttf", uni=True)
-    pdf.add_font("Syne", "I", "fonts/Syne-Medium.ttf", uni=True)
+    pdf.add_font("Syne", "", str(BASE_DIR / "fonts" / "Syne-Regular.ttf"), uni=True)
+    pdf.add_font("Syne", "B", str(BASE_DIR / "fonts" / "Syne-Bold.ttf"), uni=True)
+    pdf.add_font("Syne", "BI", str(BASE_DIR / "fonts" / "Syne-SemiBold.ttf"), uni=True)
+    pdf.add_font("Syne", "I", str(BASE_DIR / "fonts" / "Syne-Medium.ttf"), uni=True)
 
     def section_title(text: str):
         pdf.set_font("Syne", "BI", 12)

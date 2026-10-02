@@ -93,9 +93,11 @@ def analisar_imagem(caminho_arquivo: str, modelo_escolhido: str = "multiplo") ->
         if not probs_eff or not probs_conv:
             return _mock()
 
-        for i, class_info in enumerate(CLASSES):
-            prob = (probs_eff[i] + probs_conv[i]) / 2.0
-            if probs_eff[i] >= THRESHOLD or probs_conv[i] >= THRESHOLD:
+        for i, p_eff in enumerate(probs_eff):
+            p_conv = probs_conv[i]
+            prob = (p_eff + p_conv) / 2.0
+            if p_eff >= THRESHOLD or p_conv >= THRESHOLD:
+                class_info = CLASSES[i]
                 resultados_finais.append({
                     "tag": class_info["tag"],
                     "doenca": class_info["nome"],

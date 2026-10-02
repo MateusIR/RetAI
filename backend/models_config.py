@@ -9,8 +9,7 @@ CLASSES = [
     {"tag": "drusens",               "nome": "Drusas"},
     {"tag": "myopic_fundus",         "nome": "Fundo Míope"},
     {"tag": "increased_cup_disc",    "nome": "Aumento da Relação C/D"},
-    {"tag": "vascular_occlusion",    "nome": "Oclusão Vascular Retiniana"},
-    {"tag": "retinal_detachment",    "nome": "Descolamento de Retina"},
+    {"tag": "vascular_occlusion",    "nome": "Oclusão Vascular Retiniana"}
 ]
 
 NUM_CLASSES = len(CLASSES)

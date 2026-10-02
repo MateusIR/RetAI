@@ -88,7 +88,7 @@
     "modelMultiploLabel": "Multiple Processing (Default)",
     "modelConvnextLabel": "ConvNeXt V2 (Individual)",
     "modelEfficientLabel": "EfficientNet V2 (Individual)",
-    "modelPreferenceWarning": "The EfficientNet model is optimized to be lighter and faster.",
+    "modelPreferenceWarning": "The EfficientNet model is optimized to be lighter and faster, while ConvNeXt is a slightly more comprehensive option.",
     "modelPreferenceWarningMultiplo": "Multiple processing averages the models for higher reliability.",
     "login": {
       "title": "Log in to access the system",
@@ -171,7 +171,7 @@
     },
     "aboutModal": {
   "title": "About the Platform",
-  "version": "Ocular Diagnosis v1.0",
+  "version": "Ocular Diagnosis v1.1.0",
   "description": "RetAI is a local-first clinical screening tool based on artificial intelligence. The platform analyzes retinography (fundoscopy) images to assist in detecting ocular pathologies, operating as a secure second-opinion tool for healthcare professionals.",
   "legalWarningTitle": "Legal Disclaimer",
   "legalWarningText": "The results presented by this platform are strictly suggestive and do not replace the report of a qualified physician.",

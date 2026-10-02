@@ -31,7 +31,9 @@ app.add_middleware(
 )
 
 # ── Armazenamento de imagens ──────────────────────────────────────────────────
-IMG_DIR = os.getenv("IMG_DIR", "./imagens_salvas")
+from pathlib import Path
+USER_HOME = Path.home()
+IMG_DIR = os.getenv("IMG_DIR", str(USER_HOME / ".retai_data" / "imagens_salvas"))
 os.makedirs(IMG_DIR, exist_ok=True)
 app.mount("/imagens_salvas", StaticFiles(directory=IMG_DIR), name="imagens_salvas")
 
